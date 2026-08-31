@@ -6,12 +6,11 @@ yang benar-benar cocok dengan implementasi**. Setelah phase ini → **MVP DONE**
 
 **Prasyarat:** Phase 3 selesai (semua endpoint MVP sudah jalan).
 
-**Kenapa kontrak di akhir, padahal aturannya "kontrak lebih dulu"?** Aturan
-"kontrak lebih dulu" (AGENTS.md #8) berlaku saat **menambah/mengubah endpoint**
-di codebase yang sudah jalan. Di sini kita membangun dari nol dengan daftar
-endpoint yang sudah tercantum di `openapi.yaml`; yang tersisa adalah melengkapi
-schema & response-nya agar cocok dengan bentuk DTO yang baru lahir. Mulai dari
-endpoint berikutnya, urutannya kembali: kontrak dulu.
+**Catatan soal kontrak:** `contracts/openapi.yaml` sudah diisi lengkap di
+**T0.15 (Phase 0)** — sesuai aturan "kontrak lebih dulu" (AGENTS.md #8, ADR-002)
+dan karena `apps/frontend` menggenerate type-nya dari sana (ADR-019). Yang
+tersisa di phase ini hanyalah **memverifikasi** bahwa implementasi akhir benar-
+benar cocok dengan kontrak itu (T4.6).
 
 ---
 
@@ -115,32 +114,33 @@ endpoint berikutnya, urutannya kembali: kontrak dulu.
 - **DoD:** tak ada handler yang menulis status/code sendiri di luar tabel ini.
 - **Verifikasi:** `grep -rn "http.Error\|WriteHeader(5" internal/modules/` → kosong.
 
-## T4.6 — `contracts/openapi.yaml` dilengkapi
+## T4.6 — Verifikasi kontrak vs implementasi
 
-- **Sentuh:** `contracts/openapi.yaml`
-- **Isi:**
-  1. **14 schema** di `components.schemas` (sekarang `{}`): `RegisterRequest`,
-     `LoginRequest`, `AuthResponse`, `UserResponse`, `CreateQuestRequest`,
-     `UpdateQuestRequest`, `QuestResponse`, `CompleteQuestRequest`,
-     `QuestLogResponse`, `TodayQuestsResponse`, `ScoreResponse`,
-     `StreakResponse`, `LeaderboardEntry`, `ErrorResponse`.
-  2. **11 operasi** dilengkapi `requestBody` + `responses` (termasuk 400/401/404/409
-     yang merujuk `ErrorResponse`).
-  3. **`parameters`**: path `{questId}` (uuid) di 3 operasi; query `limit` di
-     `/leaderboard`.
-  4. **Pasang `security: [bearerAuth: []]`** di operasi terproteksi.
-     `securitySchemes.bearerAuth` sudah didefinisikan tapi **belum dipakai di satu
-     operasi pun**.
-  5. **Tambahkan endpoint yang ada di kode tapi hilang dari kontrak:**
-     `GET /me`, dan `GET /healthz` + `GET /readyz` (catat bahwa keduanya berada
-     **di luar** prefix `/api/v1`, jadi butuh entri `servers` tersendiri atau
-     catatan eksplisit di `description`).
-- **Aturan:** `ErrorResponse` **wajib** persis sama bentuknya dengan envelope
-  `httpx` (T0.8) — ini yang diminta TODO baris 9 di file itu.
-- **DoD:** setiap endpoint yang jalan ada di kontrak, dan sebaliknya; tak ada
-  `# TODO` tersisa di file.
-- **Verifikasi:** `grep -c TODO contracts/openapi.yaml` → 0. Validasi spec
-  (mis. `npx @redocly/cli lint contracts/openapi.yaml`) bersih.
+- **Sentuh:** `contracts/openapi.yaml` (hanya bila ada yang melenceng)
+- **Isi:** kontrak sudah lengkap sejak T0.15. Di sini dicocokkan dengan hasil
+  akhir implementasi:
+  1. **Setiap endpoint yang jalan ada di kontrak, dan sebaliknya** — tak ada
+     rute yang terlupa, tak ada operasi yang didokumentasikan tapi tak
+     diimplementasi.
+  2. **Bentuk field cocok**: nama, tipe, dan required setiap schema sama dengan
+     DTO di `dto.go` masing-masing module.
+  3. **Status & `code` error** yang benar-benar dikembalikan handler cocok dengan
+     yang tercantum di kontrak (bandingkan dengan tabel di T4.5).
+  4. **`security: bearerAuth`** terpasang persis di operasi yang memang berada di
+     grup terproteksi `router.go` — tak lebih, tak kurang.
+  5. Envelope sukses `{"data": ...}` dan error `{"error":{code,message}}` sesuai
+     `ErrorResponse` di kontrak.
+- **Aturan:** kalau ada yang melenceng, **perbaiki kontrak dan/atau
+  implementasi** — dan beri tahu frontend, karena mereka harus menjalankan
+  `npm run gen:api` lagi (ADR-019). Jangan biarkan salah satunya "benar sendiri".
+- **DoD:** nol selisih antara kontrak dan implementasi; `grep -c TODO
+  contracts/openapi.yaml` → 0.
+- **Verifikasi:** `npx @redocly/cli lint contracts/openapi.yaml` bersih, lalu
+  bandingkan daftar rute:
+  ```bash
+  grep -rn "r.Get\|r.Post\|r.Patch\|r.Delete" internal/modules/ internal/server/
+  grep -n "^  /" contracts/openapi.yaml
+  ```
 
 ## T4.7 — `Dockerfile` + `.env.example`
 
@@ -174,6 +174,8 @@ endpoint berikutnya, urutannya kembali: kontrak dulu.
   uncomplete quest hard      -> 200
   GET /me/score              -> poin kembali 0
   GET /me/streak             -> current tetap 1 (ADR-009)
+  PATCH /me {"timezone":"Asia/Makassar"} -> token baru, claims.Timezone berubah
+  GET /quests/today          -> tanggal mengikuti timezone baru
   ```
 - **DoD:** seluruh alur di atas sesuai harapan.
 
@@ -185,7 +187,8 @@ endpoint berikutnya, urutannya kembali: kontrak dulu.
 - [ ] `make migrate-up` dari DB kosong sukses; smoke test T4.8 lulus penuh.
 - [ ] `/healthz` & `/readyz` jalan; Ctrl+C shutdown bersih.
 - [ ] Envelope response & error seragam di seluruh endpoint.
-- [ ] `contracts/openapi.yaml` nol TODO dan cocok 1:1 dengan implementasi.
+- [ ] `contracts/openapi.yaml` nol TODO dan cocok 1:1 dengan implementasi
+      (termasuk `PATCH /me`).
 - [ ] `docker build` sukses.
 - [ ] Tak ada import lintas-module, tak ada SQL di luar `repository_postgres.go`,
       tak ada `time.Now()` mentah untuk logika harian.

@@ -7,6 +7,8 @@ curl — ini titik pertama aplikasi "hidup".
 **Prasyarat:** Phase 0 selesai (butuh `auth`, `httpx`, `validator`, `database`,
 tabel `users`).
 
+**Endpoint:** `POST /auth/register`, `POST /auth/login`, `GET /me`, `PATCH /me`.
+
 **Rujukan pola:** GUIDES §2 (menambah endpoint), ARCHITECTURE "lapisan di dalam
 satu module".
 
@@ -204,7 +206,47 @@ satu module".
 - **DoD:** `make run` menyalakan server, `GET /healthz` → 200.
 - **Verifikasi:** `make run` lalu `curl -i localhost:8080/healthz`
 
-## T1.10 — Test phase 1
+## T1.10 — `PATCH /me`: ubah profil & timezone
+
+- **Sentuh:** `internal/modules/user/dto.go`, `repository.go` +
+  `repository_postgres.go`, `service.go`, `handler.go`, `routes.go`
+- **Isi:**
+  ```go
+  // dto.go — partial update, pointer supaya "tak dikirim" != "dikirim kosong"
+  type UpdateProfileRequest struct {
+      DisplayName *string `json:"display_name" validate:"omitempty,min=1"`
+      Timezone    *string `json:"timezone"     validate:"omitempty,timezone"`
+  }
+  // repository.go
+  Update(ctx context.Context, u User) error
+  // service.go
+  func (s *service) UpdateProfile(ctx, userID string, req UpdateProfileRequest) (AuthResponse, error)
+  // routes.go — daftarkan di RegisterProtectedRoutes
+  PATCH /me
+  ```
+- **Aturan keras (ADR-022):** endpoint ini mengembalikan **`AuthResponse`**
+  (token + user), bukan `UserResponse`. Karena timezone ikut di JWT claims
+  (ADR-013), mengubah timezone **wajib menerbitkan token baru** — kalau tidak,
+  backend terus menghitung "hari ini" dengan timezone lama sampai token
+  kedaluwarsa (hingga 24 jam), dan user melihat setelannya berubah tapi tak
+  terjadi apa-apa. Gejala seperti ini sangat sulit dilacak.
+- **Aturan:** email **tidak** bisa diubah di MVP (menyentuh keunikan &
+  kepemilikan akun — keputusan tersendiri kalau nanti dibutuhkan). Timezone
+  divalidasi sebagai IANA yang sah (`time.LoadLocation`), bukan string bebas.
+- **Kenapa masuk MVP:** timezone menentukan batas hari untuk quest & streak
+  (ADR-006), tapi tanpa endpoint ini nilainya hanya bisa diisi saat register —
+  user di luar `Asia/Jakarta` yang salah pilih terjebak selamanya. Halaman
+  Settings frontend (F4.1–F4.3) bergantung pada endpoint ini.
+- **DoD:** `display_name` & timezone tersimpan; response memuat token baru yang
+  claims-nya berisi timezone baru.
+- **Verifikasi:**
+  ```bash
+  curl -sX PATCH localhost:8080/api/v1/me -H "Authorization: Bearer $TOKEN" \
+    -d '{"timezone":"Asia/Makassar"}'
+  # decode token baru -> claims.Timezone == "Asia/Makassar"
+  ```
+
+## T1.11 — Test phase 1
 
 - **Sentuh (baru):** `internal/modules/user/service_test.go`
 - **Isi:** fake `Repository` (map in-memory) + fake `auth.Issuer`. Kasus:
@@ -213,6 +255,8 @@ satu module".
   - Login password salah **dan** email tak ada → **error yang sama**
     (`ErrInvalidCredential`).
   - `Profile` mengembalikan `UserResponse` tanpa PasswordHash.
+  - `UpdateProfile` mengubah timezone → token yang dikembalikan berisi timezone
+    baru (fake `Issuer` mencatat argumen yang diterima).
 - **Smoke test manual:**
   ```bash
   curl -sX POST localhost:8080/api/v1/auth/register -d '{"email":"a@b.c","password":"rahasia123","display_name":"A"}'
@@ -232,4 +276,5 @@ satu module".
 - [ ] `PasswordHash` tidak muncul di response mana pun
       (`curl ... | grep -i password` → kosong).
 - [ ] Token berisi `UserID` **dan** `Timezone` (siap dipakai Phase 2).
+- [ ] `PATCH /me` mengubah profil **dan** menerbitkan token baru (ADR-022).
 - [ ] `internal/modules/user` tidak meng-import module lain.

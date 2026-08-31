@@ -172,6 +172,94 @@ beberapa tabel sekaligus. UUID v7 terurut waktu, jadi indeks tidak terfragmentas
 seperti v4. ID tidak bisa ditebak — aman untuk dipakai di URL. Biaya: 16 byte per
 id, lebih besar dari BIGSERIAL.
 
+## ADR-016 — (dipesan) Atomicity penyelesaian quest
+**Status:** Belum diputuskan
+**Konteks:** Nomor ini disisakan untuk keputusan atomicity "buat log + tambah
+poin" yang akan diambil saat mengerjakan backend T3.10
+(`apps/backend/docs/tasks/phase-03-scoring.md`).
+**Keputusan:** —
+**Konsekuensi:** —
+
+## ADR-017 — Frontend: React + Vite + TypeScript
+**Status:** Diterima
+**Konteks:** `apps/frontend` masih kosong. Backend sudah menyediakan REST API
+dengan kontrak OpenAPI, jadi frontend murni consumer.
+**Keputusan:** SPA dengan React + Vite + TypeScript. Next.js ditolak: SSR/SSG dan
+lapisan server-nya tak dibutuhkan karena data ada di balik autentikasi (tak ada
+yang perlu di-index mesin pencari) dan backend Go sudah jadi satu-satunya
+sumber data — menambah runtime Node hanya menambah hal yang harus dideploy.
+**Konsekuensi:** Deploy frontend = file statis. Kalau kelak butuh SEO untuk
+halaman publik (landing, leaderboard terbuka), itu keputusan baru.
+
+## ADR-018 — Pemisahan server state (TanStack Query) dan client state (Zustand)
+**Status:** Diterima
+**Konteks:** Preferensi awal memakai Zustand untuk state. Tapi hampir semua data
+di app ini milik server (quest, score, streak, leaderboard) dan satu aksi
+—mencentang quest— mengubah tiga sumber data sekaligus.
+**Keputusan:** TanStack Query memegang seluruh server state (cache, loading,
+refetch, invalidasi, optimistic update). Zustand hanya memegang client state:
+token auth dan preferensi UI. Semua panggilan HTTP tetap terkumpul di
+`src/apis/*.api.ts`; hook Query hanya membungkusnya, dan komponen tak pernah
+memanggil axios/fetch langsung.
+**Konsekuensi:** Tak perlu menulis ulang caching & sinkronisasi manual; invalidasi
+lintas-fitur cukup satu tempat. Biayanya satu dependency dan satu konsep baru
+(query key), yang dijinakkan dengan key terpusat di `features/*/queries/keys.ts`.
+Konsekuensi tegas: **dilarang menyimpan hasil API ke Zustand**.
+
+## ADR-019 — Type API digenerate dari kontrak, bukan ditulis tangan
+**Status:** Diterima
+**Konteks:** ADR-002 menetapkan `contracts/openapi.yaml` sebagai sumber kebenaran
+bersama backend & frontend. Type TypeScript bisa ditulis tangan atau digenerate.
+**Keputusan:** `openapi-typescript` menghasilkan `src/apis/schema.gen.ts` lewat
+`npm run gen:api`. File itu tak pernah diedit tangan; alias yang ramah dipakai
+ditaruh di `src/apis/types.ts`. Kalau type yang dibutuhkan tak ada, yang
+diperbaiki adalah kontraknya.
+**Konsekuensi:** Perubahan kontrak yang merusak ketahuan saat compile, bukan saat
+runtime di produksi. Konsekuensi urutan: pengisian `contracts/openapi.yaml`
+dinaikkan ke Phase 0 backend (T0.15), supaya frontend tak menunggu backend
+selesai.
+
+## ADR-020 — Token disimpan di localStorage (MVP)
+**Status:** Diterima (MVP)
+**Konteks:** Backend menerbitkan satu JWT ber-TTL 24 jam, tanpa refresh token dan
+tanpa cookie httpOnly. Frontend harus menyimpannya di suatu tempat.
+**Keputusan:** Simpan di localStorage lewat `zustand/persist`. Token hanya
+disentuh oleh `auth.store` dan interceptor di `src/apis/client.ts`; tak ada
+komponen yang membaca localStorage langsung. Cookie httpOnly ditolak untuk MVP
+karena menuntut perubahan backend (set-cookie + proteksi CSRF) di luar scope.
+**Konsekuensi:** Sesi bertahan melewati refresh browser. Risiko: token terbaca
+kalau ada XSS — diterima secara sadar untuk MVP, dan diperkecil dengan tidak
+pernah menyisipkan HTML mentah. Jalan keluarnya di v2: refresh token pendek atau
+cookie httpOnly, lewat ADR yang men-supersede ini.
+
+## ADR-021 — MSW sebagai mock dev di balik flag
+**Status:** Diterima
+**Konteks:** Backend dan frontend dikerjakan paralel. Frontend akan menganggur
+kalau harus menunggu tiap endpoint jadi.
+**Keputusan:** Mock Service Worker, aktif hanya bila `VITE_USE_MOCK=true`.
+Handler-nya diketik memakai type hasil generate dan meniru envelope response
+serta bentuk error backend, termasuk jalur gagal (401, 404, 409).
+**Konsekuensi:** Frontend bisa dibangun & didemokan tanpa Postgres/Go. Risikonya
+mock melenceng dari backend asli — ditekan dengan mengetik handler dari
+`schema.gen.ts`, dan dikunci oleh task F4.9 yang mewajibkan uji melawan backend
+asli sebelum MVP dinyatakan selesai. Ketidakcocokan diperbaiki di kontrak/backend,
+bukan ditambal di frontend.
+
+## ADR-022 — `PATCH /me` masuk MVP; ubah timezone menerbitkan token baru
+**Status:** Diterima
+**Konteks:** MVP backend semula hanya punya `GET /me`. Padahal timezone user
+menentukan batas hari untuk quest & streak (ADR-006), dan nilainya hanya bisa
+diisi saat register — user di luar `Asia/Jakarta` yang salah pilih akan terjebak
+selamanya.
+**Keputusan:** Tambah `PATCH /me` (ubah `display_name` & timezone) ke MVP
+backend. Karena timezone ikut di JWT claims (ADR-013), endpoint ini
+mengembalikan `AuthResponse` — token **baru** beserta user — dan frontend wajib
+menyimpannya menggantikan token lama.
+**Konsekuensi:** Tanpa penerbitan token baru, backend akan terus memakai timezone
+lama sampai token kedaluwarsa (hingga 24 jam) — setelan berubah tapi tak terjadi
+apa-apa. Email tetap tak bisa diubah di MVP. Menambah 1 endpoint ke scope backend
+(task T1.11).
+
 ---
 
 <!--

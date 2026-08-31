@@ -8,7 +8,9 @@ belum ada endpoint yang jalan, tapi semua bahan untuk membangun module sudah ada
 Postgres hidup: `docker compose -f docker-compose.dev.yml up -d`.
 
 **Kenapa duluan:** T0.1 memblokir semua import, T0.2 memblokir semua kompilasi,
-T0.3 memblokir semua `repository_postgres.go`. Sisanya dipakai lintas module.
+T0.3 memblokir semua `repository_postgres.go`, dan **T0.15 memblokir seluruh
+`apps/frontend`** (frontend menggenerate type-nya dari kontrak — ADR-019).
+Sisanya dipakai lintas module.
 
 ---
 
@@ -256,6 +258,39 @@ T0.3 memblokir semua `repository_postgres.go`. Sisanya dipakai lintas module.
 - **DoD:** kelima ADR terbaca dan dipahami; ADR-001..010 tetap utuh.
 - **Verifikasi:** `grep -c "^## ADR-" docs/DECISIONS.md` → 16 (15 ADR + template).
 
+## T0.15 — Isi `contracts/openapi.yaml` (kontrak lebih dulu)
+
+- **Sentuh:** `contracts/openapi.yaml`
+- **Isi:**
+  1. **15 schema** di `components.schemas` (sekarang `{}`): `RegisterRequest`,
+     `LoginRequest`, `AuthResponse`, `UserResponse`, **`UpdateProfileRequest`**,
+     `CreateQuestRequest`, `UpdateQuestRequest`, `QuestResponse`,
+     `CompleteQuestRequest`, `QuestLogResponse`, `TodayQuestsResponse`,
+     `ScoreResponse`, `StreakResponse`, `LeaderboardEntry`, `ErrorResponse`.
+  2. **`requestBody` + `responses`** untuk 11 operasi yang sudah terdaftar
+     (termasuk 400/401/404/409 yang merujuk `ErrorResponse`).
+  3. **`parameters`**: path `{questId}` (uuid) di 3 operasi; query `limit` di
+     `/leaderboard`.
+  4. **Pasang `security: [bearerAuth: []]`** di operasi terproteksi.
+     `securitySchemes.bearerAuth` sudah didefinisikan tapi belum dipakai di satu
+     operasi pun.
+  5. **Tambah endpoint yang belum ada di kontrak:** `GET /me`, **`PATCH /me`**
+     (lihat T1.11), serta `GET /healthz` & `GET /readyz` (catat bahwa keduanya
+     **di luar** prefix `/api/v1`).
+- **Aturan:** `ErrorResponse` **wajib** persis sama bentuknya dengan envelope
+  `httpx` (T0.8). Ini yang diminta TODO baris 9 di file kontrak.
+- **Kenapa di Phase 0, bukan di akhir:** ini memang aturan repo — "kontrak lebih
+  dulu" (AGENTS.md #8, ADR-002). Dan `apps/frontend` **memblokir di sini**:
+  task F0.4 frontend menggenerate seluruh type TypeScript-nya dari file ini
+  (ADR-019). Selama `components.schemas` masih `{}`, frontend tak bisa mulai.
+  Mengisinya sekarang membuat dua app bisa jalan paralel.
+- **Catatan:** bentuk DTO di sini menjadi acuan saat menulis `dto.go` di Phase 1-3.
+  Kalau saat implementasi ternyata ada yang perlu berubah, **ubah kontraknya
+  juga** di saat yang sama — jangan biarkan melenceng sampai Phase 4.
+- **DoD:** nol `# TODO` tersisa di `contracts/openapi.yaml`; spec valid.
+- **Verifikasi:** `grep -c TODO contracts/openapi.yaml` → 0, dan
+  `npx @redocly/cli lint contracts/openapi.yaml` bersih.
+
 ---
 
 ## Exit criteria Phase 0
@@ -265,3 +300,4 @@ T0.3 memblokir semua `repository_postgres.go`. Sisanya dipakai lintas module.
 - [ ] `go.sum` ada (Dockerfile tidak lagi gagal di tahap `COPY`).
 - [ ] Tidak ada file di `internal/platform/*` yang meng-import `internal/modules/*`.
 - [ ] ADR-011..015 sudah dibaca; tak ada yang ditabrak diam-diam.
+- [ ] `contracts/openapi.yaml` terisi lengkap (nol TODO) — **frontend memblokir di sini**.

@@ -44,6 +44,18 @@ Urutan ini mengikuti `docs/GUIDES.md` §8. Jangan lompat: phase 2 sengaja bisa
 diuji tanpa scoring (pakai ScoreAwarder no-op) supaya tidak ada dua module
 setengah jadi sekaligus.
 
+### Yang ditunggu `apps/frontend`
+
+Frontend dikerjakan paralel dan memblokir di dua titik:
+
+| Frontend butuh | Dari | Kenapa |
+|---|---|---|
+| `contracts/openapi.yaml` terisi | **T0.15** | frontend menggenerate seluruh type-nya dari sana (ADR-019) |
+| `PATCH /me` | **T1.10** | halaman Settings — user harus bisa mengubah timezone (ADR-006, ADR-022) |
+
+Sisanya frontend pakai mock (MSW) sampai endpoint terkait jadi. Lihat
+`apps/frontend/docs/tasks/README.md`.
+
 ---
 
 ## Keputusan yang mengikat semua task
@@ -58,6 +70,7 @@ Lima keputusan diambil sebelum task ini disusun, dicatat sebagai
 | 013 | Timezone user | Ikut di **JWT claims**; middleware isi `userID` + `timezone` ke context |
 | 014 | Nama di leaderboard | Port **`UserDirectory`** milik `scoring`, diimplement `user` |
 | 015 | Primary key | `uuid`, **UUIDv7 digenerate di aplikasi** (`github.com/google/uuid`) |
+| 022 | `PATCH /me` | Masuk MVP; mengubah timezone **menerbitkan token baru** |
 
 Kalau salah satu terasa salah saat implementasi: **jangan ditabrak diam-diam** —
 tulis ADR baru yang men-supersede.
@@ -86,6 +99,7 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 | [ ] | T0.12 | `platform/auth/token.go` (Claims + JWT) |
 | [ ] | T0.13 | Test phase 0 |
 | [x] | T0.14 | ADR-011..015 di `docs/DECISIONS.md` (sudah ditulis, tinggal ditinjau) |
+| [ ] | T0.15 | **Isi `contracts/openapi.yaml`** — memblokir `apps/frontend` |
 
 ### Phase 1 — User & Auth → [phase-01-user-auth.md](phase-01-user-auth.md)
 
@@ -100,7 +114,8 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 | [ ] | T1.7 | `user/module.go` |
 | [ ] | T1.8 | `platform/middleware`: `Authenticator` + context helper |
 | [ ] | T1.9 | `server`: rakit minimal (user saja) supaya bisa dijalankan |
-| [ ] | T1.10 | Test phase 1 |
+| [ ] | T1.10 | **`PATCH /me`** — ubah profil & timezone, terbitkan token baru |
+| [ ] | T1.11 | Test phase 1 |
 
 ### Phase 2 — Quest → [phase-02-quest.md](phase-02-quest.md)
 
@@ -142,7 +157,7 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 | [ ] | T4.3 | `server/server.go` — `New/ListenAndServe/Shutdown` |
 | [ ] | T4.4 | `cmd/api/main.go` — graceful shutdown |
 | [ ] | T4.5 | Error mapping seragam lintas module |
-| [ ] | T4.6 | `contracts/openapi.yaml` — 14 schema + 11 operasi + security |
+| [ ] | T4.6 | Verifikasi kontrak vs implementasi (pengisiannya di T0.15) |
 | [ ] | T4.7 | `Dockerfile` + `.env.example` |
 | [ ] | T4.8 | Smoke test end-to-end MVP |
 
@@ -155,7 +170,8 @@ Semua terpenuhi:
 1. `make fmt && make vet && make build && make test` bersih.
 2. `make migrate-up` sukses dari database kosong.
 3. Alur lengkap jalan lewat HTTP: register → login → buat quest → complete →
-   `GET /me/score` naik → `GET /me/streak` benar → `GET /leaderboard` tampil.
+   `GET /me/score` naik → `GET /me/streak` benar → `GET /leaderboard` tampil →
+   `PATCH /me` mengubah timezone & menerbitkan token baru.
 4. `contracts/openapi.yaml` cocok dengan implementasi (tak ada endpoint yang ada
    di kode tapi hilang dari kontrak, dan sebaliknya).
 5. Tak ada import lintas-module (`modules/a` → `modules/b`), tak ada SQL di luar

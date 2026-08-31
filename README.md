@@ -14,7 +14,7 @@ questday/
 │   ├── backend/          # Go modular monolith (fokus MVP saat ini)
 │   └── frontend/         # TODO — masih kosong
 ├── contracts/            # Kontrak API (OpenAPI) — sumber kebenaran bersama app
-├── docs/                 # ARCHITECTURE, DECISIONS, GUIDES
+├── docs/                 # HANDS-OFF, ARCHITECTURE, DECISIONS, GUIDES
 ├── docker-compose.dev.yml# Infra dev (Postgres, dll)
 └── AGENTS.md             # Aturan main untuk AI coding agent
 ```
@@ -35,6 +35,7 @@ make dev                                          # jalankan server + hot reload
 
 ## Dokumentasi
 
+- `docs/HANDS-OFF.md` — **state proyek saat ini** & titik mulai (baca duluan).
 - `docs/ARCHITECTURE.md` — bentuk sistem, lapisan, aturan dependensi.
 - `docs/DECISIONS.md` — catatan keputusan (ADR) selama pengembangan.
 - `docs/GUIDES.md` — cara nambah module / endpoint / usecase / migrasi / dll.

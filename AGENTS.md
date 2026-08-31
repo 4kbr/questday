@@ -8,6 +8,8 @@ dan agar keputusan tak diam-diam ditabrak.
 
 Sebelum mengubah apa pun, baca:
 
+0. `docs/HANDS-OFF.md` — **state proyek saat ini**, apa yang sudah/belum ada,
+   dan dari mana harus mulai. Baca ini dulu kalau kamu baru masuk.
 1. `docs/ARCHITECTURE.md` — bentuk sistem & aturan dependensi.
 2. `docs/DECISIONS.md` — keputusan yang sudah diambil (JANGAN dilanggar diam-diam).
 3. `docs/GUIDES.md` — resep langkah-per-langkah untuk tugas umum.
