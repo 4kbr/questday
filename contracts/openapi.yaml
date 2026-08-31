@@ -1,0 +1,104 @@
+# OpenAPI 3.1 — Kontrak API QuestDay.
+#
+# CATATAN: ini kerangka. Isi detail schema & response saat kamu mengerjakan
+# tiap endpoint. Aturannya: ubah file ini DULU, baru implement di backend.
+#
+# TODO umum:
+#   - Lengkapi components.schemas untuk tiap DTO (request & response).
+#   - Tambah securityScheme bearer JWT dan pasang di endpoint yang butuh auth.
+#   - Samakan bentuk error dengan platform/httpx (envelope error konsisten).
+
+openapi: "3.1.0"
+info:
+  title: QuestDay API
+  version: "0.1.0"
+  description: API untuk pencatat quest harian dengan gamifikasi (poin, XP, streak).
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local dev
+
+tags:
+  - name: auth
+    description: Registrasi & login
+  - name: quests
+    description: Definisi quest & penyelesaian harian (log)
+  - name: scoring
+    description: Poin, level, streak, leaderboard
+
+paths:
+  # --- AUTH -----------------------------------------------------------------
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Daftar user baru
+      # TODO: requestBody RegisterRequest, response AuthResponse
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login, kembalikan token
+      # TODO: requestBody LoginRequest, response AuthResponse
+
+  # --- QUESTS ---------------------------------------------------------------
+  /quests:
+    get:
+      tags: [quests]
+      summary: List quest milik user
+      # TODO: response array QuestResponse
+    post:
+      tags: [quests]
+      summary: Buat quest baru
+      # TODO: requestBody CreateQuestRequest, response QuestResponse
+  /quests/{questId}:
+    patch:
+      tags: [quests]
+      summary: Ubah quest
+      # TODO
+    delete:
+      tags: [quests]
+      summary: Hapus / arsipkan quest
+      # TODO
+  /quests/today:
+    get:
+      tags: [quests]
+      summary: Quest hari ini beserta status selesai/belum
+      # TODO: response TodayQuestsResponse (hormati timezone user)
+  /quests/{questId}/complete:
+    post:
+      tags: [quests]
+      summary: Tandai quest selesai untuk hari ini (memicu penambahan poin)
+      # TODO: requestBody CompleteQuestRequest (opsional progress/value)
+  /quests/{questId}/uncomplete:
+    post:
+      tags: [quests]
+      summary: Batalkan penyelesaian hari ini (rollback poin)
+      # TODO
+
+  # --- SCORING --------------------------------------------------------------
+  /me/score:
+    get:
+      tags: [scoring]
+      summary: Total poin, XP, dan level user
+      # TODO: response ScoreResponse
+  /me/streak:
+    get:
+      tags: [scoring]
+      summary: Streak berjalan & terpanjang
+      # TODO: response StreakResponse
+  /leaderboard:
+    get:
+      tags: [scoring]
+      summary: Peringkat berdasarkan poin
+      # TODO: response array LeaderboardEntry
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas: {}
+    # TODO: RegisterRequest, LoginRequest, AuthResponse, UserResponse,
+    #       CreateQuestRequest, UpdateQuestRequest, QuestResponse,
+    #       CompleteQuestRequest, QuestLogResponse, TodayQuestsResponse,
+    #       ScoreResponse, StreakResponse, LeaderboardEntry, ErrorResponse

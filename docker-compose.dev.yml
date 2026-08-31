@@ -1,0 +1,33 @@
+# Infra untuk pengembangan lokal (level monorepo).
+# Hanya dependency eksternal (database, dll). App-nya sendiri dijalankan via
+# `make dev` di apps/backend supaya hot-reload (air) enak dipakai.
+#
+# Jalankan:  docker compose -f docker-compose.dev.yml up -d
+# Matikan:   docker compose -f docker-compose.dev.yml down
+# Reset DB:  docker compose -f docker-compose.dev.yml down -v
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: questday_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: questday
+      POSTGRES_PASSWORD: questday
+      POSTGRES_DB: questday
+    ports:
+      - "5432:5432"
+    volumes:
+      - questday_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U questday -d questday"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # TODO (opsional, nanti kalau perlu):
+  #   adminer / pgweb  -> UI lihat isi DB
+  #   redis            -> cache / rate-limit / job queue
+
+volumes:
+  questday_pgdata:

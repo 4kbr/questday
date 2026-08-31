@@ -1,0 +1,20 @@
+# Root .gitignore — sengaja minimal.
+# Tiap app punya .gitignore sendiri (apps/backend/.gitignore, dst).
+# Di sini hanya hal yang lintas-app / level monorepo.
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+
+# Env & secret (jaga-jaga, walau tiap app juga meng-ignore)
+.env
+.env.*
+!.env.example
+
+# Log lokal
+*.log
