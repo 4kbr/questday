@@ -4,17 +4,52 @@
 // argumen, bukan membaca env langsung — supaya gampang di-test & jelas.
 package config
 
-// TODO:
-//   type Config struct {
-//       Env         string        // development | production
-//       HTTPPort    string        // mis. "8080"
-//       DatabaseURL string
-//       JWTSecret   string
-//       JWTTTL      time.Duration
-//   }
-//
-//   // Load membaca env, memberi default yang wajar, dan memvalidasi nilai wajib
-//   // (mis. DATABASE_URL, JWT_SECRET). Kembalikan error kalau ada yang kurang.
-//   func Load() (Config, error)
-//
-//   // Helper kecil kalau perlu: getenv(key, default), mustEnv(key), dst.
+import (
+	"fmt"
+	"os"
+	"time"
+)
+
+// Config adalah seluruh konfigurasi runtime aplikasi.
+type Config struct {
+	Env         string        // development | production
+	HTTPPort    string        // mis. "8080"
+	DatabaseURL string        // DSN Postgres
+	JWTSecret   string        // secret penandatangan token
+	JWTTTL      time.Duration // masa berlaku token
+}
+
+// Load membaca env, memberi default yang wajar, lalu memvalidasi nilai wajib.
+// Kembalikan zero Config + error kalau ada yang kurang / tidak valid.
+func Load() (Config, error) {
+	cfg := Config{
+		Env:         getenv("APP_ENV", "development"),
+		HTTPPort:    getenv("HTTP_PORT", "8080"),
+		DatabaseURL: getenv("DATABASE_URL", ""),
+		JWTSecret:   getenv("JWT_SECRET", ""),
+	}
+
+	if cfg.DatabaseURL == "" {
+		return Config{}, fmt.Errorf("config: DATABASE_URL wajib diisi")
+	}
+	if cfg.JWTSecret == "" {
+		return Config{}, fmt.Errorf("config: JWT_SECRET wajib diisi")
+	}
+
+	ttlRaw := getenv("JWT_TTL", "24h")
+	ttl, err := time.ParseDuration(ttlRaw)
+	if err != nil {
+		return Config{}, fmt.Errorf("config: JWT_TTL tidak valid (%q): %w", ttlRaw, err)
+	}
+	cfg.JWTTTL = ttl
+
+	return cfg, nil
+}
+
+// getenv mengembalikan nilai env key, atau def kalau kosong / tidak ada.
+func getenv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}

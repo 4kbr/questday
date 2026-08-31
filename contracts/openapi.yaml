@@ -1,95 +1,402 @@
-# OpenAPI 3.1 — Kontrak API QuestDay.
-#
-# CATATAN: ini kerangka. Isi detail schema & response saat kamu mengerjakan
-# tiap endpoint. Aturannya: ubah file ini DULU, baru implement di backend.
-#
-# TODO umum:
-#   - Lengkapi components.schemas untuk tiap DTO (request & response).
-#   - Tambah securityScheme bearer JWT dan pasang di endpoint yang butuh auth.
-#   - Samakan bentuk error dengan platform/httpx (envelope error konsisten).
-
 openapi: "3.1.0"
 info:
   title: QuestDay API
   version: "0.1.0"
   description: API untuk pencatat quest harian dengan gamifikasi (poin, XP, streak).
+  license:
+    name: Proprietary
+    url: https://questday.example.com/license
 
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:8080
     description: Local dev
 
 tags:
   - name: auth
     description: Registrasi & login
+  - name: user
+    description: Profil user yang sedang login
   - name: quests
     description: Definisi quest & penyelesaian harian (log)
   - name: scoring
     description: Poin, level, streak, leaderboard
+  - name: health
+    description: Liveness & readiness probe
 
 paths:
-  # --- AUTH -----------------------------------------------------------------
-  /auth/register:
+  # --- AUTH ---------------------------------------------------------------
+  /api/v1/auth/register:
     post:
+      operationId: registerUser
       tags: [auth]
       summary: Daftar user baru
-      # TODO: requestBody RegisterRequest, response AuthResponse
-  /auth/login:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: User dibuat, token dikembalikan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/auth/login:
     post:
+      operationId: loginUser
       tags: [auth]
       summary: Login, kembalikan token
-      # TODO: requestBody LoginRequest, response AuthResponse
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Kredensial valid, token dikembalikan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
 
-  # --- QUESTS ---------------------------------------------------------------
-  /quests:
+  # --- USER ---------------------------------------------------------------
+  /api/v1/me:
     get:
-      tags: [quests]
-      summary: List quest milik user
-      # TODO: response array QuestResponse
-    post:
-      tags: [quests]
-      summary: Buat quest baru
-      # TODO: requestBody CreateQuestRequest, response QuestResponse
-  /quests/{questId}:
+      operationId: getMe
+      tags: [user]
+      summary: Ambil profil user yang sedang login
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profil user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
     patch:
-      tags: [quests]
-      summary: Ubah quest
-      # TODO
-    delete:
-      tags: [quests]
-      summary: Hapus / arsipkan quest
-      # TODO
-  /quests/today:
-    get:
-      tags: [quests]
-      summary: Quest hari ini beserta status selesai/belum
-      # TODO: response TodayQuestsResponse (hormati timezone user)
-  /quests/{questId}/complete:
-    post:
-      tags: [quests]
-      summary: Tandai quest selesai untuk hari ini (memicu penambahan poin)
-      # TODO: requestBody CompleteQuestRequest (opsional progress/value)
-  /quests/{questId}/uncomplete:
-    post:
-      tags: [quests]
-      summary: Batalkan penyelesaian hari ini (rollback poin)
-      # TODO
+      operationId: updateMe
+      tags: [user]
+      summary: Ubah profil user (parsial); mengembalikan token baru (ADR-022)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profil diperbarui, token baru dikembalikan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
 
-  # --- SCORING --------------------------------------------------------------
-  /me/score:
+  /api/v1/me/score:
     get:
+      operationId: getMyScore
       tags: [scoring]
       summary: Total poin, XP, dan level user
-      # TODO: response ScoreResponse
-  /me/streak:
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ringkasan skor user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/me/streak:
     get:
+      operationId: getMyStreak
       tags: [scoring]
       summary: Streak berjalan & terpanjang
-      # TODO: response StreakResponse
-  /leaderboard:
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Data streak user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreakResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  # --- QUESTS -----------------------------------------------------------
+  /api/v1/quests:
     get:
+      operationId: listQuests
+      tags: [quests]
+      summary: List quest milik user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daftar quest milik user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+    post:
+      operationId: createQuest
+      tags: [quests]
+      summary: Buat quest baru
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuestRequest'
+      responses:
+        '201':
+          description: Quest dibuat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/quests/today:
+    get:
+      operationId: getTodayQuests
+      tags: [quests]
+      summary: Quest hari ini beserta status selesai/belum (hormati timezone user)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Quest untuk tanggal lokal user beserta status penyelesaian.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodayQuestsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/quests/{questId}:
+    parameters:
+      - $ref: '#/components/parameters/QuestId'
+    patch:
+      operationId: updateQuest
+      tags: [quests]
+      summary: Ubah quest (parsial)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuestRequest'
+      responses:
+        '200':
+          description: Quest diperbarui.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+    delete:
+      operationId: deleteQuest
+      tags: [quests]
+      summary: Hapus / arsipkan quest
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Quest dihapus / diarsipkan.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/quests/{questId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/QuestId'
+    post:
+      operationId: completeQuest
+      tags: [quests]
+      summary: Tandai quest selesai untuk hari ini (memicu penambahan poin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteQuestRequest'
+      responses:
+        '200':
+          description: Quest ditandai selesai, log dikembalikan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestLogResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/quests/{questId}/uncomplete:
+    parameters:
+      - $ref: '#/components/parameters/QuestId'
+    post:
+      operationId: uncompleteQuest
+      tags: [quests]
+      summary: Batalkan penyelesaian hari ini (rollback poin)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Penyelesaian hari ini dibatalkan.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  # --- SCORING --------------------------------------------------------
+  /api/v1/leaderboard:
+    get:
+      operationId: getLeaderboard
       tags: [scoring]
       summary: Peringkat berdasarkan poin
-      # TODO: response array LeaderboardEntry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Jumlah maksimum entri yang dikembalikan.
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        '200':
+          description: Daftar peringkat.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeaderboardEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  # --- HEALTH --------------------------------------------------------
+  /healthz:
+    get:
+      operationId: getHealthz
+      tags: [health]
+      summary: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service hidup.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        default:
+          $ref: '#/components/responses/Internal'
+
+  /readyz:
+    get:
+      operationId: getReadyz
+      tags: [health]
+      summary: Readiness probe
+      security: []
+      responses:
+        '200':
+          description: Service siap menerima traffic.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        default:
+          $ref: '#/components/responses/Internal'
 
 components:
   securitySchemes:
@@ -97,8 +404,301 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  schemas: {}
-    # TODO: RegisterRequest, LoginRequest, AuthResponse, UserResponse,
-    #       CreateQuestRequest, UpdateQuestRequest, QuestResponse,
-    #       CompleteQuestRequest, QuestLogResponse, TodayQuestsResponse,
-    #       ScoreResponse, StreakResponse, LeaderboardEntry, ErrorResponse
+
+  parameters:
+    QuestId:
+      name: questId
+      in: path
+      required: true
+      description: ID quest (UUID).
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Permintaan tidak valid (mis. validation_failed).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Token tidak ada / tidak valid, atau kredensial salah.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource tidak ditemukan.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Konflik state (mis. already_completed / not_completed / email_taken).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Internal:
+      description: Kesalahan internal server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, display_name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        display_name:
+          type: string
+        timezone:
+          type: string
+          description: >
+            IANA timezone (mis. "Asia/Jakarta"). Opsional; server memakai
+            "Asia/Jakarta" sebagai default bila tidak diisi.
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    UserResponse:
+      type: object
+      description: Profil publik user. Tidak pernah menyertakan password_hash.
+      required: [id, email, display_name, timezone]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        timezone:
+          type: string
+
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      description: Update parsial profil. Email tidak dapat diubah.
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+        timezone:
+          type: string
+          description: IANA timezone (mis. "Asia/Jakarta").
+
+    CreateQuestRequest:
+      type: object
+      additionalProperties: false
+      required: [title, category, difficulty]
+      properties:
+        title:
+          type: string
+        note:
+          type: string
+        category:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+
+    UpdateQuestRequest:
+      type: object
+      additionalProperties: false
+      description: Update parsial quest.
+      properties:
+        title:
+          type: string
+        note:
+          type: string
+        category:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        active:
+          type: boolean
+
+    QuestResponse:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - category
+        - difficulty
+        - recurrence
+        - active
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        note:
+          type: string
+        category:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        recurrence:
+          type: string
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CompleteQuestRequest:
+      type: object
+      additionalProperties: false
+      description: Body kosong untuk MVP.
+
+    QuestLogResponse:
+      type: object
+      required:
+        - id
+        - quest_id
+        - user_id
+        - date
+        - status
+        - points_awarded
+        - completed_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        quest_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+          description: Tanggal lokal user, mis. "2026-08-31".
+        status:
+          type: string
+        points_awarded:
+          type: integer
+        completed_at:
+          type: string
+          format: date-time
+
+    TodayQuestsResponse:
+      type: object
+      required: [date, items]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Tanggal lokal user, mis. "2026-08-31".
+        items:
+          type: array
+          items:
+            type: object
+            required: [quest, completed]
+            properties:
+              quest:
+                $ref: '#/components/schemas/QuestResponse'
+              completed:
+                type: boolean
+
+    ScoreResponse:
+      type: object
+      required: [total_points, xp, level, points_to_next_level]
+      properties:
+        total_points:
+          type: integer
+        xp:
+          type: integer
+        level:
+          type: integer
+        points_to_next_level:
+          type: integer
+
+    StreakResponse:
+      type: object
+      required: [current, longest]
+      properties:
+        current:
+          type: integer
+        longest:
+          type: integer
+        last_active:
+          type: [string, "null"]
+          format: date
+          description: Tanggal aktivitas terakhir (lokal user), atau null.
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, user_id, display_name, points]
+      properties:
+        rank:
+          type: integer
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        points:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      description: >
+        Amplop error konsisten dengan platform/httpx. Serialisasi:
+        {"error":{"code":"...","message":"..."}}. Nilai `error.code` yang dipakai:
+        email_taken, invalid_credential, user_not_found, quest_not_found,
+        already_completed, not_completed, validation_failed, internal_error.
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string

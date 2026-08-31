@@ -1,8 +1,7 @@
 -- Rollback migrasi awal. Urutan DROP kebalikan dari up (hormati FK).
--- TODO:
---   DROP TABLE IF EXISTS point_transactions;
---   DROP TABLE IF EXISTS streaks;
---   DROP TABLE IF EXISTS wallets;
---   DROP TABLE IF EXISTS quest_logs;
---   DROP TABLE IF EXISTS quests;
---   DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS point_transactions;
+DROP TABLE IF EXISTS streaks;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS quest_logs;
+DROP TABLE IF EXISTS quests;
+DROP TABLE IF EXISTS users;

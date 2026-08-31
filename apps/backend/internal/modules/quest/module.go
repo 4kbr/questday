@@ -4,6 +4,7 @@
 // KEPUTUSAN KUNCI: Quest (definisi) dan QuestLog (instance harian) dipisah.
 //   - Quest    : "Lari pagi", 20 poin, health, recurring harian. Dibuat/edit user.
 //   - QuestLog : "2026-08-31, user X menyelesaikan Lari pagi". Bertambah tiap hari.
+//
 // Semua perhitungan (hari ini selesai apa, streak) berbasis QuestLog.
 //
 // file module.go = perakitan module: menyambungkan repository -> service ->

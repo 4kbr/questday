@@ -1,38 +1,71 @@
--- Migrasi awal QuestDay.
--- Isi DDL sesuai entitas di tiap module. Kerangka tabel & alasannya di bawah.
--- Buat file baru untuk perubahan berikutnya: `make migrate-create name=...`.
+-- Migrasi awal QuestDay (MVP: user, quest, scoring).
+-- PostgreSQL 16. Format golang-migrate (migrate membungkus tiap file dalam transaksi).
+-- id uuid TANPA default: aplikasi men-generate UUIDv7. Tanpa pgcrypto.
+-- Tabel v2 (badges, unlocks) sengaja tidak dibuat.
 
 -- users
---   id            (pk, uuid/text)
---   email         (unique, not null)          -> deteksi ErrEmailTaken
---   password_hash (not null)
---   display_name  (not null)
---   timezone      (not null, default 'Asia/Jakarta')  -> batas hari lokal
---   created_at    (timestamptz, default now())
--- TODO: CREATE TABLE users (...); CREATE UNIQUE INDEX ... ON users(email);
+CREATE TABLE users (
+    id            uuid PRIMARY KEY,
+    email         text NOT NULL UNIQUE,
+    password_hash text NOT NULL,
+    display_name  text NOT NULL,
+    timezone      text NOT NULL DEFAULT 'Asia/Jakarta',
+    created_at    timestamptz NOT NULL DEFAULT now()
+);
 
 -- quests (definisi)
---   id, user_id (fk users), title, note,
---   category, difficulty, recurrence, active (bool default true),
---   created_at
--- TODO: CREATE TABLE quests (...); INDEX (user_id);
+CREATE TABLE quests (
+    id         uuid PRIMARY KEY,
+    user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title      text NOT NULL,
+    note       text NOT NULL DEFAULT '',
+    category   text NOT NULL,
+    difficulty text NOT NULL,
+    recurrence text NOT NULL DEFAULT 'daily',
+    active     boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
 
--- quest_logs (instance harian)
---   id, quest_id (fk quests), user_id (fk users),
---   date (DATE — tanggal lokal user), status, points_awarded, completed_at
---   UNIQUE (quest_id, date)  -> cegah dobel selesai di hari sama
--- TODO: CREATE TABLE quest_logs (...); INDEX (user_id, date);
+CREATE INDEX ON quests (user_id);
+
+-- quest_logs (instance harian; date = tanggal lokal user, ADR-006)
+CREATE TABLE quest_logs (
+    id             uuid PRIMARY KEY,
+    quest_id       uuid NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+    user_id        uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date           date NOT NULL,
+    status         text NOT NULL,
+    points_awarded integer NOT NULL DEFAULT 0,
+    completed_at   timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (quest_id, date)
+);
+
+CREATE INDEX ON quest_logs (user_id, date);
 
 -- wallets (scoring)
---   user_id (pk, fk users), total_points, xp, level
--- TODO: CREATE TABLE wallets (...);
+CREATE TABLE wallets (
+    user_id      uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    total_points integer NOT NULL DEFAULT 0,
+    xp           integer NOT NULL DEFAULT 0,
+    level        integer NOT NULL DEFAULT 1
+);
 
 -- streaks (scoring)
---   user_id (pk, fk users), current, longest, last_active (DATE)
--- TODO: CREATE TABLE streaks (...);
+CREATE TABLE streaks (
+    user_id     uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    current     integer NOT NULL DEFAULT 0,
+    longest     integer NOT NULL DEFAULT 0,
+    last_active date
+);
 
--- point_transactions (ledger scoring, untuk audit & rollback)
---   id, user_id, quest_id, points (bisa negatif), date, created_at
--- TODO: CREATE TABLE point_transactions (...); INDEX (user_id, created_at);
+-- point_transactions (ledger scoring; points bisa negatif)
+CREATE TABLE point_transactions (
+    id         uuid PRIMARY KEY,
+    user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    quest_id   uuid REFERENCES quests(id) ON DELETE SET NULL,
+    points     integer NOT NULL,
+    date       date NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
 
--- (v2) badges, unlocks  -> tunda sampai module achievement digarap.
+CREATE INDEX ON point_transactions (user_id, created_at);

@@ -260,6 +260,27 @@ lama sampai token kedaluwarsa (hingga 24 jam) — setelan berubah tapi tak terja
 apa-apa. Email tetap tak bisa diubah di MVP. Menambah 1 endpoint ke scope backend
 (task T1.11).
 
+## ADR-023 — Pemetaan error domain → HTTP lewat registry di `httpx`
+**Status:** Diterima
+**Konteks:** `platform/httpx` tak boleh import `modules/*` (aturan keras #5), tapi
+tiap handler perlu menerjemahkan error domain (mis. `user.ErrEmailTaken`,
+`quest.ErrQuestNotFound`) ke status + kode HTTP yang konsisten dengan
+`contracts/openapi.yaml`. Kalau tiap handler memetakan sendiri, tangga
+`errors.Is` tersebar di ~15 handler dan gampang melenceng dari kontrak. T0.8
+meminta satu mapper yang dipakai semua handler tanpa melanggar arah dependensi.
+**Keputusan:** `httpx` menyediakan registry proses-global:
+`RegisterErrorMapping(err error, status int, code string)` +
+`WriteError(w, err)` yang mencari lewat `errors.Is` lalu jatuh ke `Internal`
+(log, tanpa bocor detail) bila tak ada yang cocok. Registry dijaga
+`sync.RWMutex`. Tiap module mendaftarkan sentinel error-nya di `New()` saat
+perakitan di `server`. Alternatif "map di tiap handler" ditolak (duplikasi &
+drift); "httpx import modules" ditolak (langgar aturan #5).
+**Konsekuensi:** Satu sumber kebenaran mapping; handler tetap tipis
+(`httpx.WriteError(w, err)`). Biaya: satu `map` global + mutex, diisi sekali
+saat startup — urutan registrasi tak penting karena kunci adalah sentinel
+error. Registrasi yang lupa → error jatuh ke 500, ketahuan saat test. T4.5
+tinggal memverifikasi kelengkapan, bukan merancang ulang.
+
 ---
 
 <!--
