@@ -102,6 +102,76 @@ setelah MVP. Saat digarap, pertimbangkan pindah keterhubungan ke event bus agar
 scoring & achievement tak menumpuk di orkestrasi `quest`.
 **Konsekuensi:** Struktur lengkap tanpa membebani MVP.
 
+## ADR-011 — Module path Go: `questday`
+**Status:** Diterima
+**Konteks:** Scaffold memakai placeholder `github.com/yourorg/questday`. Semua
+import internal mengikuti module path, jadi ini harus diputuskan sebelum satu
+baris kode pun ditulis.
+**Keputusan:** `module questday`. Import jadi `questday/internal/modules/quest`,
+dst. Path pendek tanpa domain, karena modul ini tidak dipublish untuk di-import
+repo lain.
+**Konsekuensi:** Kalau suatu saat backend perlu di-import dari luar (mis. dipecah
+jadi service terpisah yang berbagi package), path harus diubah dan seluruh import
+ikut berubah. Murah selama masih monolith.
+
+## ADR-012 — Akses database: `database/sql` + driver `pgx/v5/stdlib`
+**Status:** Diterima
+**Konteks:** Perlu memilih cara bicara ke Postgres sebelum menulis repository.
+Pilihannya `database/sql` (dengan pgx stdlib atau lib/pq) versus `pgxpool` native.
+**Keputusan:** `database/sql` dengan `_ "github.com/jackc/pgx/v5/stdlib"`. Semua
+repository menerima `*sql.DB`, sesuai signature yang sudah dicontohkan scaffold
+(`New(db *sql.DB, ...)`). `pgxpool` ditolak; `lib/pq` ditolak (maintenance mode).
+**Konsekuensi:** Transaksi lintas-module gampang (`db.BeginTx`) — penting untuk
+"buat log + tambah poin" yang atomik. Interface repository gampang di-fake untuk
+test. Biayanya: fitur khusus Postgres di pgx (COPY, listen/notify, tipe kaya)
+tidak langsung tersedia; kalau nanti dibutuhkan, bisa dibuka lewat `stdlib`
+escape hatch atau ADR baru.
+
+## ADR-013 — Timezone user dibawa lewat JWT claims
+**Status:** Diterima
+**Konteks:** ADR-006 mewajibkan "hari ini" dihitung dari timezone user. Tapi
+scaffold tidak menyediakan jalan untuk membawa timezone itu ke handler `quest` —
+middleware hanya menaruh `userID` ke context. Tiga opsi: masukkan ke JWT claims,
+port `TimezoneProvider` dari quest ke user, atau middleware query DB.
+**Keputusan:** Timezone ikut di JWT claims (`Claims{UserID, Timezone}`).
+`middleware.Authenticator` mengisi keduanya ke request context; handler quest
+membacanya lewat `middleware.TimezoneFrom`. Opsi middleware-query-DB ditolak
+karena melanggar aturan `platform/*` tak boleh kenal `modules/*`.
+**Konsekuensi:** Nol query tambahan per request. Tapi user yang mengubah
+timezone-nya baru merasakan efeknya setelah token baru terbit — bisa diatasi
+dengan menerbitkan ulang token saat profil diubah, atau TTL yang tidak terlalu
+panjang. Kalau kelak timezone harus selalu fresh, pindah ke port
+`TimezoneProvider` dan tulis ADR yang men-supersede ini.
+
+## ADR-014 — Nama di leaderboard lewat port `UserDirectory`, bukan JOIN
+**Status:** Diterima
+**Konteks:** `LeaderboardEntry` memuat `DisplayName`, yang tinggal di tabel
+`users`. Scaffold menaruh `Leaderboard()` di repository `scoring` — kalau
+diimplementasi apa adanya, SQL scoring harus JOIN ke `users` dan jadi tahu skema
+module lain.
+**Keputusan:** `scoring.Repository.Leaderboard(limit)` hanya mengembalikan
+`userID` + poin. `scoring` mendefinisikan port `UserDirectory` dengan
+`NamesByIDs(ctx, ids) (map[string]string, error)`; `user` mengimplementasinya dan
+mengeksposnya lewat `AsUserDirectory()`; `server` menjahit keduanya. Sesuai pola
+ADR-005 (interface milik peminta).
+**Konsekuensi:** Batas module tetap utuh — `scoring` tidak menyentuh tabel
+`users`. Biayanya satu query tambahan per permintaan leaderboard, dan urutan
+instansiasi di `server` jadi mengikat (`user` sebelum `scoring`). Kalau
+leaderboard tumbuh besar dan dua query jadi mahal, pertimbangkan denormalisasi
+nama atau cache — bukan JOIN.
+
+## ADR-015 — Primary key: UUID v7 digenerate di aplikasi
+**Status:** Diterima
+**Konteks:** Tipe id belum diputuskan di scaffold. Pilihan: BIGSERIAL, UUID via
+`gen_random_uuid()` (pgcrypto), atau UUID digenerate di Go.
+**Keputusan:** Kolom `uuid`, nilainya dibuat di aplikasi dengan UUID v7
+(`github.com/google/uuid`). Tidak ada `DEFAULT` di DDL.
+**Konsekuensi:** Tak perlu ekstensi Postgres. ID sudah ada sebelum `INSERT`, jadi
+tak perlu `RETURNING id` dan enak dipakai di dalam transaksi yang menulis ke
+beberapa tabel sekaligus. UUID v7 terurut waktu, jadi indeks tidak terfragmentasi
+seperti v4. ID tidak bisa ditebak — aman untuk dipakai di URL. Biaya: 16 byte per
+id, lebih besar dari BIGSERIAL.
+
 ---
 
 <!--

@@ -7,6 +7,7 @@ dan agar keputusan tak diam-diam ditabrak.
 ## Orientasi dulu
 
 Sebelum mengubah apa pun, baca:
+
 1. `docs/ARCHITECTURE.md` — bentuk sistem & aturan dependensi.
 2. `docs/DECISIONS.md` — keputusan yang sudah diambil (JANGAN dilanggar diam-diam).
 3. `docs/GUIDES.md` — resep langkah-per-langkah untuk tugas umum.
@@ -48,6 +49,7 @@ Kalau tugas cocok dengan salah satu resep di GUIDES, ikuti resep itu.
 ## Saat menambah sesuatu
 
 Ikuti GUIDES:
+
 - Endpoint baru → GUIDES §2. Module baru → §4. Module saling bicara → §5.
   Migrasi → §6.
 - Selalu perbarui `contracts/openapi.yaml`.
@@ -76,3 +78,16 @@ Ikuti GUIDES:
   men-supersede-nya.
 - Jangan mengerjakan `achievement` atau fitur v2 kecuali diminta.
 - Ragu soal desain? Berhenti dan tanya, jangan tebak lalu memaksakan.
+
+## Agent Rules
+
+1. Jika memungkinkan selalu gunakan skill `caveman` sebagai default response jawaban dan tanpa mengurangi kualitas jawaban.
+2. Jangan kerjakan task sendiri, Selalu panggil subagents jika memungkinkan untuk membagi dan menyelesaikan task yang diberikan.
+3. Untuk main agent dan subagents, Selalu gunakan `high` effort dan model untuk mode planning dan `medium` atau `low` effort dan model untuk mode implementasi. sehingga bisa menghasilkan jawaban yang lebih optimal dengan implementasi yang efisien dan efektif untuk menghemat token.
+
+---
+
+## Guard
+
+- Jangan baca envrionment file `.env` dan sejenisnya selain file `.env.example` yang menjadi template tanpa meminta izin dari user
+- Jangan tambah co-author dicommit tanpa diminta
