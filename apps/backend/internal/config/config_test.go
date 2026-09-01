@@ -16,6 +16,7 @@ func setRequired(t *testing.T) {
 	t.Setenv("APP_ENV", "")
 	t.Setenv("HTTP_PORT", "")
 	t.Setenv("JWT_TTL", "")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "")
 }
 
 func TestLoad_Defaults(t *testing.T) {
@@ -82,5 +83,36 @@ func TestLoad_InvalidJWTTTL(t *testing.T) {
 
 	if _, err := Load(); err == nil {
 		t.Fatal("Load() harusnya error saat JWT_TTL tidak valid")
+	}
+}
+
+func TestLoad_CORSAllowedOrigins(t *testing.T) {
+	setRequired(t)
+	t.Setenv("CORS_ALLOWED_ORIGINS", " http://a.com ,http://b.com,, ")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	want := []string{"http://a.com", "http://b.com"}
+	if len(cfg.CORSAllowedOrigins) != len(want) {
+		t.Fatalf("CORSAllowedOrigins = %v, mau %v", cfg.CORSAllowedOrigins, want)
+	}
+	for i := range want {
+		if cfg.CORSAllowedOrigins[i] != want[i] {
+			t.Errorf("CORSAllowedOrigins[%d] = %q, mau %q", i, cfg.CORSAllowedOrigins[i], want[i])
+		}
+	}
+}
+
+func TestLoad_CORSAllowedOrigins_Empty(t *testing.T) {
+	setRequired(t) // CORS_ALLOWED_ORIGINS dinetralkan ke ""
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if len(cfg.CORSAllowedOrigins) != 0 {
+		t.Errorf("CORSAllowedOrigins = %v, mau kosong", cfg.CORSAllowedOrigins)
 	}
 }

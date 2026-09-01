@@ -34,3 +34,10 @@ func New(db *sql.DB, issuer auth.Issuer) *Module {
 
 	return &Module{handler: h, svc: svc}
 }
+
+// AsUserDirectory mengekspos service sebagai penyedia nama user. Dikonsumsi
+// module scoring lewat port scoring.UserDirectory (ADR-014). Tipe balik
+// *service (unexported) memang disengaja.
+func (m *Module) AsUserDirectory() *service {
+	return m.svc
+}

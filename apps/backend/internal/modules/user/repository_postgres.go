@@ -75,6 +75,34 @@ func (r *postgresRepository) Update(ctx context.Context, u User) error {
 	return nil
 }
 
+// ListNamesByIDs mengambil display_name untuk sekumpulan id dalam satu query.
+// ids kosong -> map kosong tanpa menyentuh DB.
+func (r *postgresRepository) ListNamesByIDs(ctx context.Context, ids []string) (map[string]string, error) {
+	out := make(map[string]string, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+
+	const q = `SELECT id, display_name FROM users WHERE id = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, q, ids)
+	if err != nil {
+		return nil, fmt.Errorf("user: list names: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("user: scan name: %w", err)
+		}
+		out[id] = name
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("user: list names rows: %w", err)
+	}
+	return out, nil
+}
+
 func (r *postgresRepository) scanOne(row *sql.Row) (User, error) {
 	var u User
 	err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.Timezone, &u.CreatedAt)

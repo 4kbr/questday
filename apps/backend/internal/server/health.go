@@ -15,7 +15,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // readyHandler = readiness: dependency penting siap (di sini: DB bisa di-ping).
-// Gagal -> 503. Versi disempurnakan di Phase 4 (T4.1).
+// Context bertimeout supaya tak menggantung saat DB lambat; gagal -> 503.
 func readyHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)

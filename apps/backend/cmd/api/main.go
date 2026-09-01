@@ -1,11 +1,18 @@
 // Command api adalah entrypoint HTTP server QuestDay.
 //
-// Merakit lewat server.New (composition root). Graceful shutdown penuh
-// menyusul di Phase 4 (T4.4).
+// Merakit lewat server.New (composition root), jalan sampai menerima
+// SIGINT/SIGTERM, lalu shutdown dengan anggun (HTTP drain + db.Close).
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"questday/internal/config"
 	"questday/internal/platform/database"
@@ -19,12 +26,25 @@ func main() {
 	}
 
 	db := database.MustConnect(cfg.DatabaseURL)
-	defer db.Close()
-
 	srv := server.New(cfg, db)
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("server: %v", err)
+		}
+	}()
 	log.Printf("questday listening on :%s", cfg.HTTPPort)
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("server: %v", err)
+
+	<-ctx.Done()
+	log.Println("shutdown: sinyal diterima, menutup server...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
 	}
+	log.Println("shutdown: selesai")
 }

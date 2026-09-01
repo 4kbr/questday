@@ -187,14 +187,28 @@ beberapa tabel sekaligus. UUID v7 terurut waktu, jadi indeks tidak terfragmentas
 seperti v4. ID tidak bisa ditebak — aman untuk dipakai di URL. Biaya: 16 byte per
 id, lebih besar dari BIGSERIAL.
 
-## ADR-016 — (dipesan) Atomicity penyelesaian quest
+## ADR-016 — Atomicity penyelesaian quest: kompensasi manual (MVP)
 
-**Status:** Belum diputuskan
-**Konteks:** Nomor ini disisakan untuk keputusan atomicity "buat log + tambah
-poin" yang akan diambil saat mengerjakan backend T3.10
-(`apps/backend/docs/tasks/phase-03-scoring.md`).
-**Keputusan:** —
-**Konsekuensi:** —
+**Status:** Diterima (MVP)
+**Konteks:** `quest.service.CompleteQuest` melakukan dua tulisan ke DB yang
+lintas-module: `repo.CreateLog` (tabel `quest_logs`, milik quest) lalu
+`scorer.OnQuestCompleted` (tabel `wallets`/`streaks`/`point_transactions`, milik
+scoring). Keduanya bukan satu transaksi. Kalau tulisan kedua gagal, log sudah
+terlanjur ada tapi poin tak pernah masuk — quest tampak selesai tanpa pahala.
+Opsi: (a) alirkan `*sql.Tx` lewat port `ScoreAwarder` / helper
+`platform/database.WithTx` + interface `execer` bersama; (b) biarkan berurutan
+lalu kompensasi manual saat gagal.
+**Keputusan:** Opsi (b) untuk MVP. `CompleteQuest` membungkus
+`scorer.OnQuestCompleted`; kalau error, ia memanggil `repo.DeleteLog(...)` untuk
+menghapus log yang baru dibuat, lalu mengembalikan error. Port `ScoreAwarder`
+tetap **murni** — tak ada `*sql.Tx` yang bocor ke kontrak antar-module. Perilaku
+ini dikunci oleh test (`TestCompleteQuest_ScorerFails_NoOrphanLog`).
+**Konsekuensi:** Ada jendela sangat kecil non-atomik antara `CreateLog` sukses
+dan `DeleteLog` kompensasi; kalau proses mati persis di situ, log yatim bisa
+tertinggal (jarang, dan `uncomplete` bisa membersihkannya secara manual). Dapat
+diterima untuk MVP. Jalur keluar kalau nanti perlu benar-benar atomik: ganti ke
+Opsi (a) lewat ADR baru yang men-supersede ini — `platform/database.WithTx` +
+repository yang menerima `execer` (`*sql.DB` atau `*sql.Tx`).
 
 ## ADR-017 — Frontend: React + Vite + TypeScript
 
@@ -364,6 +378,25 @@ berbarengan.
 (mis. bonus streak), `points` di response otomatis ikut — cukup ubah
 `Quest.Points()`. Nilai 5/10/20 sendiri masih di bawah ADR-007 ("bisa
 ditinjau"), bukan ADR baru.
+
+## ADR-027 — CORS lewat `go-chi/cors`, origin dari environment
+
+**Status:** Diterima
+**Konteks:** `apps/frontend` (Vite, origin `http://localhost:5173` saat dev,
+domain lain saat produksi) memanggil API dari browser — lintas origin, jadi
+butuh header CORS. Menulis middleware CORS sendiri gampang salah di preflight
+(`OPTIONS`, `Access-Control-Max-Age`, echo origin). chi tak punya CORS di core.
+**Keputusan:** Tambah dependency `github.com/go-chi/cors` (companion resmi chi,
+kecil). Origin dibaca dari env `CORS_ALLOWED_ORIGINS` (comma-separated) →
+`config.Config.CORSAllowedOrigins`. `buildRouter` memasang `cors.Handler` hanya
+bila daftar origin tak kosong — **default = CORS mati** (tak ada header), aman
+untuk deploy yang belum dikonfigurasi. `AllowCredentials: false` karena token
+dibawa di header `Authorization`, bukan cookie (ADR-020). Metode
+`GET/POST/PATCH/DELETE/OPTIONS`, header `Authorization, Content-Type`.
+**Konsekuensi:** Satu dependency ringan bertambah (dicatat di sini sesuai
+AGENTS.md). Deploy wajib men-set `CORS_ALLOWED_ORIGINS` ke origin frontend,
+kalau tidak browser akan menolak request. `chimw.RealIP` sengaja tetap tak
+dipakai (IP-spoofing, GHSA-3fxj-6jh8-hvhx) — itu keputusan kode, bukan ADR.
 
 ---
 

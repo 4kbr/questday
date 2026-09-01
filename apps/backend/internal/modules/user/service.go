@@ -98,6 +98,13 @@ func (s *service) UpdateProfile(ctx context.Context, userID string, in UpdatePro
 	return s.issue(u)
 }
 
+// NamesByIDs mengembalikan map userID -> display_name. Memenuhi port
+// scoring.UserDirectory (ADR-014) — dipanggil scoring lewat interface, bukan
+// dengan meng-import module user.
+func (s *service) NamesByIDs(ctx context.Context, ids []string) (map[string]string, error) {
+	return s.repo.ListNamesByIDs(ctx, ids)
+}
+
 // issue merangkai token + profil jadi AuthResponse.
 func (s *service) issue(u User) (AuthResponse, error) {
 	token, err := s.issuer.Issue(u.ID, u.Timezone)
