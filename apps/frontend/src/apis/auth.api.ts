@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   LoginRequest,
   RegisterRequest,
+  UpdateProfileRequest,
   User,
 } from '@/apis/types'
 
@@ -16,4 +17,6 @@ export const authApi = {
     api.post<AuthResponse>('/auth/register', body),
   login: (body: LoginRequest) => api.post<AuthResponse>('/auth/login', body),
   me: () => api.get<User>('/me'),
+  updateMe: (body: UpdateProfileRequest) =>
+    api.patch<AuthResponse>('/me', body),
 }

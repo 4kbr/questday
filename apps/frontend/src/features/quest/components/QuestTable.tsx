@@ -31,7 +31,7 @@ type QuestTableProps = {
 
 export function QuestTable({ quests, onEdit, onArchive }: QuestTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="w-full overflow-x-auto rounded-lg border border-border">
       <Table>
         <TableHeader>
           <TableRow>

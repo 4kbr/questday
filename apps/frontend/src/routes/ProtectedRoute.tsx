@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
+import { PageSkeleton } from '@/components/PageSkeleton'
 import { PATHS } from '@/routes/paths'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -18,9 +20,13 @@ export function ProtectedRoute() {
     return <Navigate to={PATHS.login} replace state={{ from: location }} />
   }
 
+  // Satu `Suspense` di dalam `AppShell`: saat chunk halaman (lazy) diunduh,
+  // sidebar/topbar tetap tampil dan hanya area konten yang menampilkan skeleton.
   return (
     <AppShell>
-      <Outlet />
+      <Suspense fallback={<PageSkeleton />}>
+        <Outlet />
+      </Suspense>
     </AppShell>
   )
 }

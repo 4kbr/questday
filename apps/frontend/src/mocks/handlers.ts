@@ -10,6 +10,7 @@ import type {
   Score,
   Streak,
   TodayQuests,
+  UpdateProfileRequest,
   UpdateQuestRequest,
   User,
 } from '@/apis/types'
@@ -232,7 +233,26 @@ export const handlers = [
     if (auth.startsWith('Bearer ')) {
       return dataResponse<User>(seededUser, 200)
     }
-    return errorResponse(401, 'invalid_credential', 'Token tidak valid')
+    // Selaras backend asli (F4.9): middleware auth memakai code `unauthorized`
+    // untuk 401 token hilang/invalid — bukan `invalid_credential` (itu khusus
+    // login email/password salah).
+    return errorResponse(401, 'unauthorized', 'Token tidak ada')
+  }),
+
+  // `PATCH /me` (F4.1) — update parsial profil. Mengembalikan `AuthResponse`
+  // (token BARU + user) karena timezone ikut di JWT claims (ADR-013/ADR-022).
+  http.patch(`${BASE}/me`, async ({ request }) => {
+    const body = (await request
+      .json()
+      .catch(() => ({}))) as Partial<UpdateProfileRequest>
+    if (body.display_name !== undefined) {
+      seededUser.display_name = body.display_name
+    }
+    if (body.timezone !== undefined) seededUser.timezone = body.timezone
+    return dataResponse<AuthResponse>(
+      { token: MOCK_TOKEN, user: seededUser },
+      200,
+    )
   }),
 
   // --- Quest (F2.11) -------------------------------------------------------

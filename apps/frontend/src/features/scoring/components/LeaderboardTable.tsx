@@ -46,42 +46,44 @@ export function LeaderboardTable({
   currentUserId,
 }: LeaderboardTableProps) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-16">Rank</TableHead>
-          <TableHead>Nama</TableHead>
-          <TableHead className="text-right">Poin</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {entries.map((entry) => {
-          const isMe = entry.user_id === currentUserId
-          // Backend menjaga display_name (T3.6), tapi FE jangan anggap mustahil.
-          const name = entry.display_name?.trim()
-            ? entry.display_name
-            : 'Pengguna dihapus'
-          return (
-            <TableRow
-              key={entry.user_id}
-              className={cn(isMe && 'bg-muted/50 font-medium')}
-            >
-              <TableCell>
-                <RankCell rank={entry.rank} />
-              </TableCell>
-              <TableCell>
-                {name}
-                {isMe && (
-                  <span className="ml-1 text-muted-foreground">(kamu)</span>
-                )}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {entry.points}
-              </TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
+    <div className="w-full overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-16">Rank</TableHead>
+            <TableHead>Nama</TableHead>
+            <TableHead className="text-right">Poin</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.map((entry) => {
+            const isMe = entry.user_id === currentUserId
+            // Backend menjaga display_name (T3.6), tapi FE jangan anggap mustahil.
+            const name = entry.display_name?.trim()
+              ? entry.display_name
+              : 'Pengguna dihapus'
+            return (
+              <TableRow
+                key={entry.user_id}
+                className={cn(isMe && 'bg-muted/50 font-medium')}
+              >
+                <TableCell>
+                  <RankCell rank={entry.rank} />
+                </TableCell>
+                <TableCell>
+                  {name}
+                  {isMe && (
+                    <span className="ml-1 text-muted-foreground">(kamu)</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {entry.points}
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

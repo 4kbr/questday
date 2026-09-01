@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
+import { PageSkeleton } from '@/components/PageSkeleton'
 import { PATHS } from '@/routes/paths'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -13,5 +15,9 @@ export function GuestRoute() {
     return <Navigate to={PATHS.dashboard} replace />
   }
 
-  return <Outlet />
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <Outlet />
+    </Suspense>
+  )
 }

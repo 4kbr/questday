@@ -190,16 +190,16 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 
 | | ID | Task |
 |---|---|---|
-| [ ] | F4.1 | `updateMe` + `useUpdateProfile` (butuh backend T1.11) |
-| [ ] | F4.2 | Halaman Settings + pemilih timezone IANA |
-| [ ] | F4.3 | Simpan token baru setelah timezone berubah (ADR-022) |
-| [ ] | F4.4 | Dark mode toggle (`ui.store`) |
-| [ ] | F4.5 | Toast seragam untuk mutation |
-| [ ] | F4.6 | `ErrorBoundary` + halaman 404 |
-| [ ] | F4.7 | Responsive — sidebar jadi drawer di mobile |
-| [ ] | F4.8 | Audit a11y ringan |
-| [ ] | F4.9 | Lepas mock: uji melawan backend asli |
-| [ ] | F4.10 | Build produksi + Dockerfile/nginx (opsional) |
+| [x] | F4.1 | `updateMe` + `useUpdateProfile` (butuh backend T1.11) |
+| [x] | F4.2 | Halaman Settings + pemilih timezone IANA |
+| [x] | F4.3 | Simpan token baru setelah timezone berubah (ADR-022) |
+| [x] | F4.4 | Dark mode toggle (`ui.store`) |
+| [x] | F4.5 | Toast seragam untuk mutation |
+| [x] | F4.6 | `ErrorBoundary` + halaman 404 |
+| [x] | F4.7 | Responsive — sidebar jadi drawer di mobile |
+| [x] | F4.8 | Audit a11y ringan |
+| [x] | F4.9 | Lepas mock: uji melawan backend asli — smoke curl penuh lolos; 1 mismatch (`error.code: unauthorized`) diperbaiki di kontrak + MSW |
+| [x] | F4.10 | Build produksi + code-splitting (Dockerfile/nginx opsional, dilewati) |
 
 ---
 

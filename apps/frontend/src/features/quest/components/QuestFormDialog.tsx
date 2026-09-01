@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { ApiError } from '@/apis/client'
 import type { Quest, UpdateQuestRequest } from '@/apis/types'
+import { toastSuccess } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -126,7 +127,10 @@ export function QuestFormDialog({
       update.mutate(
         { id: quest.id, body: diff },
         {
-          onSuccess: () => onOpenChange(false),
+          onSuccess: () => {
+            toastSuccess('Quest diperbarui')
+            onOpenChange(false)
+          },
           onError: handleError,
         },
       )
@@ -141,7 +145,10 @@ export function QuestFormDialog({
         difficulty: values.difficulty,
       },
       {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: () => {
+          toastSuccess('Quest dibuat')
+          onOpenChange(false)
+        },
         onError: handleError,
       },
     )
