@@ -1,0 +1,13 @@
+# Generated — never format
+src/apis/schema.gen.ts
+
+# MSW worker — vendored, do not format
+public/mockServiceWorker.js
+
+# Authoritative task docs — prose owned by the code owner, keep verbatim
+docs
+
+# Build output & artifacts
+dist
+coverage
+node_modules

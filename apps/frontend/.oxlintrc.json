@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": ["src/apis/schema.gen.ts", "dist", "coverage"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/features/*", "@/features/**"],
+            "message": "Import silang antar-fitur dilarang. Kode bersama lewat @/components/* atau @/lib/*. Di dalam satu fitur, pakai import relatif (./). TODO(oxlint): rule ini melarang SEMUA import '@/features/*'; oxlint belum bisa membatasi hanya 'fitur lain' relatif terhadap file saat ini, jadi import intra-fitur wajib relatif."
+          }
+        ]
+      }
+    ]
+  }
+}
