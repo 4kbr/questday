@@ -5,11 +5,32 @@
 // menghitung "hari ini" dengan benar.
 package user
 
-// TODO:
-//   type Module struct { handler *handler }
-//   func New(db *sql.DB, issuer auth.Issuer) *Module {
-//       repo := newPostgresRepository(db)
-//       svc  := newService(repo, issuer)
-//       return &Module{handler: newHandler(svc)}
-//   }
-//   func (m *Module) RegisterRoutes(r chi.Router)
+import (
+	"database/sql"
+	"net/http"
+
+	"questday/internal/platform/auth"
+	"questday/internal/platform/httpx"
+	"questday/internal/platform/validator"
+)
+
+// Module adalah satu-satunya API publik module user. service, handler, dan
+// postgresRepository tetap unexported.
+type Module struct {
+	handler *handler
+	svc     *service // disimpan untuk AsUserDirectory() di Phase 3 (T3.4)
+}
+
+// New merakit repo -> service -> handler dan mendaftarkan pemetaan error domain
+// -> HTTP (ADR-023).
+func New(db *sql.DB, issuer auth.Issuer) *Module {
+	repo := newPostgresRepository(db)
+	svc := newService(repo, issuer)
+	h := newHandler(svc, validator.New())
+
+	httpx.RegisterErrorMapping(ErrEmailTaken, http.StatusConflict, "email_taken")
+	httpx.RegisterErrorMapping(ErrInvalidCredential, http.StatusUnauthorized, "invalid_credential")
+	httpx.RegisterErrorMapping(ErrUserNotFound, http.StatusNotFound, "user_not_found")
+
+	return &Module{handler: h, svc: svc}
+}

@@ -3,7 +3,7 @@
 Setiap keputusan desain yang tak-sepele dicatat di sini, gaya ADR ringan.
 Tujuannya: "kenapa dulu kita memilih ini" tidak hilang. Tambah entri baru di
 paling bawah; jangan hapus yang lama — kalau berubah, tulis entri baru yang
-men-*supersede*.
+men-_supersede_.
 
 Format tiap entri: **Konteks → Keputusan → Konsekuensi**. Status: Diterima /
 Diganti (oleh #N) / Ditinjau ulang.
@@ -11,6 +11,7 @@ Diganti (oleh #N) / Ditinjau ulang.
 ---
 
 ## ADR-001 — Monorepo dengan `apps/`
+
 **Status:** Diterima
 **Konteks:** Ada backend (sekarang) dan frontend (nanti). Ingin satu repo.
 **Keputusan:** Struktur monorepo. Tiap app di `apps/<nama>` dan punya
@@ -19,6 +20,7 @@ Diganti (oleh #N) / Ditinjau ulang.
 di dalam satu app.
 
 ## ADR-002 — Contract API di root (`contracts/`)
+
 **Status:** Diterima
 **Konteks:** Kontrak API dipakai backend (implement) dan frontend (consume).
 **Keputusan:** Taruh di `contracts/` (root), OpenAPI 3.1, sebagai sumber
@@ -27,6 +29,7 @@ kebenaran bersama. Bukan di `apps/backend`.
 bergantung ke backend. Alur: ubah kontrak dulu, baru implement.
 
 ## ADR-003 — Backend: modular monolith (Go + chi)
+
 **Status:** Diterima
 **Konteks:** MVP solo, ingin sederhana tapi rapi & bisa berkembang.
 **Keputusan:** Satu binary, module berbatas tegas di `internal/modules/*`,
@@ -36,6 +39,7 @@ pakai chi (ringan, idiomatik). Go native untuk sisanya (net/http, database/sql).
 opsi memecah ke service terpisah nanti.
 
 ## ADR-004 — Pisahkan Quest (definisi) dari QuestLog (instance harian)
+
 **Status:** Diterima
 **Konteks:** "Quest per hari" — satu quest berulang tiap hari; perlu tahu apa
 yang selesai di tanggal tertentu, dan menghitung streak.
@@ -46,6 +50,7 @@ streak berbasis QuestLog. `UNIQUE(quest_id, date)` mencegah dobel.
 natural. Sedikit lebih banyak tabel/join — worth it.
 
 ## ADR-005 — Keterhubungan gamifikasi lewat port, bukan import langsung
+
 **Status:** Diterima
 **Konteks:** Menyelesaikan quest harus menambah poin. Tapi `quest` tak boleh
 kawin-paksa dengan `scoring`.
@@ -56,6 +61,7 @@ Untuk MVP, orkestrasi langsung (bukan event bus).
 ekstensi ke event bus tetap terbuka (lihat ADR-009).
 
 ## ADR-006 — Batas hari mengikuti timezone user
+
 **Status:** Diterima
 **Konteks:** User GMT+7 menyelesaikan quest jam 23:00 tak boleh tercatat di hari
 yang salah. Server bisa beda timezone.
@@ -67,6 +73,7 @@ menyentuh "hari ini" WAJIB lewat timezone user, tak boleh pakai `time.Now()`
 mentah.
 
 ## ADR-007 — Poin berbasis tingkat kesulitan
+
 **Status:** Diterima (bisa ditinjau)
 **Konteks:** Perlu aturan poin sederhana tapi terasa adil.
 **Keputusan:** Poin ditentukan `Difficulty` (easy/medium/hard) lewat
@@ -76,6 +83,7 @@ XP = poin untuk MVP; level = fungsi XP (`scoring.LevelForXP`).
 streak), ubah di satu titik.
 
 ## ADR-008 — Kebijakan streak: reset saat bolong (belum ada freeze)
+
 **Status:** Diterima (MVP)
 **Konteks:** Streak bikin habit app terasa "hidup", tapi bisa menyebalkan kalau
 kejam.
@@ -86,6 +94,7 @@ reset ke 1. "Freeze"/grace day = fitur nanti. Logika terpusat di
 tak hilang saat reset.
 
 ## ADR-009 — Uncomplete: rollback poin, streak dibiarkan (MVP)
+
 **Status:** Diterima (MVP)
 **Konteks:** Membatalkan penyelesaian harus mengembalikan poin. Tapi memutar
 balik streak dengan benar itu rumit (butuh rekonstruksi urutan hari).
@@ -95,6 +104,7 @@ negatif, tetapi TIDAK memutar balik streak. Ditinjau ulang bila terasa aneh.
 Dapat diterima untuk MVP; catat sebagai utang yang disadari.
 
 ## ADR-010 — Achievement ditunda ke v2
+
 **Status:** Diterima
 **Konteks:** Fokus MVP = user + quest + scoring.
 **Keputusan:** Module `achievement` hanya di-scaffold, tak di-mount. Digarap
@@ -103,6 +113,7 @@ scoring & achievement tak menumpuk di orkestrasi `quest`.
 **Konsekuensi:** Struktur lengkap tanpa membebani MVP.
 
 ## ADR-011 — Module path Go: `questday`
+
 **Status:** Diterima
 **Konteks:** Scaffold memakai placeholder `github.com/yourorg/questday`. Semua
 import internal mengikuti module path, jadi ini harus diputuskan sebelum satu
@@ -115,6 +126,7 @@ jadi service terpisah yang berbagi package), path harus diubah dan seluruh impor
 ikut berubah. Murah selama masih monolith.
 
 ## ADR-012 — Akses database: `database/sql` + driver `pgx/v5/stdlib`
+
 **Status:** Diterima
 **Konteks:** Perlu memilih cara bicara ke Postgres sebelum menulis repository.
 Pilihannya `database/sql` (dengan pgx stdlib atau lib/pq) versus `pgxpool` native.
@@ -128,6 +140,7 @@ tidak langsung tersedia; kalau nanti dibutuhkan, bisa dibuka lewat `stdlib`
 escape hatch atau ADR baru.
 
 ## ADR-013 — Timezone user dibawa lewat JWT claims
+
 **Status:** Diterima
 **Konteks:** ADR-006 mewajibkan "hari ini" dihitung dari timezone user. Tapi
 scaffold tidak menyediakan jalan untuk membawa timezone itu ke handler `quest` —
@@ -144,6 +157,7 @@ panjang. Kalau kelak timezone harus selalu fresh, pindah ke port
 `TimezoneProvider` dan tulis ADR yang men-supersede ini.
 
 ## ADR-014 — Nama di leaderboard lewat port `UserDirectory`, bukan JOIN
+
 **Status:** Diterima
 **Konteks:** `LeaderboardEntry` memuat `DisplayName`, yang tinggal di tabel
 `users`. Scaffold menaruh `Leaderboard()` di repository `scoring` — kalau
@@ -161,6 +175,7 @@ leaderboard tumbuh besar dan dua query jadi mahal, pertimbangkan denormalisasi
 nama atau cache — bukan JOIN.
 
 ## ADR-015 — Primary key: UUID v7 digenerate di aplikasi
+
 **Status:** Diterima
 **Konteks:** Tipe id belum diputuskan di scaffold. Pilihan: BIGSERIAL, UUID via
 `gen_random_uuid()` (pgcrypto), atau UUID digenerate di Go.
@@ -173,6 +188,7 @@ seperti v4. ID tidak bisa ditebak — aman untuk dipakai di URL. Biaya: 16 byte 
 id, lebih besar dari BIGSERIAL.
 
 ## ADR-016 — (dipesan) Atomicity penyelesaian quest
+
 **Status:** Belum diputuskan
 **Konteks:** Nomor ini disisakan untuk keputusan atomicity "buat log + tambah
 poin" yang akan diambil saat mengerjakan backend T3.10
@@ -181,6 +197,7 @@ poin" yang akan diambil saat mengerjakan backend T3.10
 **Konsekuensi:** —
 
 ## ADR-017 — Frontend: React + Vite + TypeScript
+
 **Status:** Diterima
 **Konteks:** `apps/frontend` masih kosong. Backend sudah menyediakan REST API
 dengan kontrak OpenAPI, jadi frontend murni consumer.
@@ -192,6 +209,7 @@ sumber data — menambah runtime Node hanya menambah hal yang harus dideploy.
 halaman publik (landing, leaderboard terbuka), itu keputusan baru.
 
 ## ADR-018 — Pemisahan server state (TanStack Query) dan client state (Zustand)
+
 **Status:** Diterima
 **Konteks:** Preferensi awal memakai Zustand untuk state. Tapi hampir semua data
 di app ini milik server (quest, score, streak, leaderboard) dan satu aksi
@@ -207,6 +225,7 @@ lintas-fitur cukup satu tempat. Biayanya satu dependency dan satu konsep baru
 Konsekuensi tegas: **dilarang menyimpan hasil API ke Zustand**.
 
 ## ADR-019 — Type API digenerate dari kontrak, bukan ditulis tangan
+
 **Status:** Diterima
 **Konteks:** ADR-002 menetapkan `contracts/openapi.yaml` sebagai sumber kebenaran
 bersama backend & frontend. Type TypeScript bisa ditulis tangan atau digenerate.
@@ -220,6 +239,7 @@ dinaikkan ke Phase 0 backend (T0.15), supaya frontend tak menunggu backend
 selesai.
 
 ## ADR-020 — Token disimpan di localStorage (MVP)
+
 **Status:** Diterima (MVP)
 **Konteks:** Backend menerbitkan satu JWT ber-TTL 24 jam, tanpa refresh token dan
 tanpa cookie httpOnly. Frontend harus menyimpannya di suatu tempat.
@@ -233,6 +253,7 @@ pernah menyisipkan HTML mentah. Jalan keluarnya di v2: refresh token pendek atau
 cookie httpOnly, lewat ADR yang men-supersede ini.
 
 ## ADR-021 — MSW sebagai mock dev di balik flag
+
 **Status:** Diterima
 **Konteks:** Backend dan frontend dikerjakan paralel. Frontend akan menganggur
 kalau harus menunggu tiap endpoint jadi.
@@ -246,6 +267,7 @@ asli sebelum MVP dinyatakan selesai. Ketidakcocokan diperbaiki di kontrak/backen
 bukan ditambal di frontend.
 
 ## ADR-022 — `PATCH /me` masuk MVP; ubah timezone menerbitkan token baru
+
 **Status:** Diterima
 **Konteks:** MVP backend semula hanya punya `GET /me`. Padahal timezone user
 menentukan batas hari untuk quest & streak (ADR-006), dan nilainya hanya bisa
@@ -261,6 +283,7 @@ apa-apa. Email tetap tak bisa diubah di MVP. Menambah 1 endpoint ke scope backen
 (task T1.11).
 
 ## ADR-023 — Pemetaan error domain → HTTP lewat registry di `httpx`
+
 **Status:** Diterima
 **Konteks:** `platform/httpx` tak boleh import `modules/*` (aturan keras #5), tapi
 tiap handler perlu menerjemahkan error domain (mis. `user.ErrEmailTaken`,
@@ -282,6 +305,7 @@ error. Registrasi yang lupa → error jatuh ke 500, ketahuan saat test. T4.5
 tinggal memverifikasi kelengkapan, bukan merancang ulang.
 
 ## ADR-024 — Root `Makefile` sebagai pintu perintah; `.env.docker` terpisah dari `.env` app
+
 **Status:** Diterima
 **Konteks:** Menjalankan infra dev hanya bisa lewat
 `docker compose -f docker-compose.dev.yml ...` yang panjang, dan kredensial
@@ -301,6 +325,26 @@ tetap **infra saja** — app tidak dijalankan di container (ADR-003 & model
 `DATABASE_URL`. Root `.gitignore` perlu `!.env.docker.example` karena pola
 `.env.*` ikut meng-ignore-nya. Kalau nanti app ikut masuk container, itu
 keputusan baru (ADR yang men-supersede sebagian ini).
+
+## ADR-025 — Amplop response sukses: `{"data": ...}`
+
+**Status:** Diterima
+**Konteks:** Phase 0 menyediakan `platform/httpx.Data` yang membungkus payload
+sukses jadi `{"data": <payload>}`, dan ADR-021 sudah mengasumsikan frontend
+"meniru envelope response". Tapi `contracts/openapi.yaml` versi awal menuliskan
+schema response sukses secara polos (mis. `AuthResponse` langsung), tanpa
+pembungkus — kontradiksi yang akan menyesatkan `npm run gen:api` dan MSW.
+**Keputusan:** Semua response sukses berbadan JSON dibungkus
+`{"data": <payload>}` (pakai `httpx.Data`). Error tetap `{"error": {code,
+message}}` (`httpx.Error`/`WriteError`). Response `204` tak berbadan.
+`contracts/openapi.yaml` diperbarui: tiap response 2xx berbadan kini
+`type: object, required: [data], properties.data: <schema-lama>`. Health probe
+(`/healthz`, `/readyz`) tetap polos `HealthResponse` — di luar `/api/v1`, bukan
+bagian amplop API.
+**Konsekuensi:** Satu bentuk seragam untuk klien; `httpx.Data` jadi jalur wajib
+handler sukses (bukan `httpx.JSON` mentah). Register memakai `200` (bukan `201`)
+sesuai kontrak. Endpoint Phase 2/3 yang schema-nya sudah ada di kontrak ikut
+dibungkus sekarang; implementasinya nanti tinggal pakai `httpx.Data`.
 
 ---
 
