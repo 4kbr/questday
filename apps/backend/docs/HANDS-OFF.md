@@ -4,9 +4,9 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
 `apps/backend`. **Baca sesudah `AGENTS.md` (root), sebelum menyentuh kode.**
 
 **Terakhir diperbarui:** 2026-09-01
-**Status:** Phase 0 (Foundation) **selesai & ter-commit**. Phase 1 (User & Auth)
-**selesai** (kode + unit test hijau; smoke test end-to-end menunggu Postgres).
-Phase 2 (Quest) belum dimulai.
+**Status:** Phase 0 + Phase 1 ter-commit (`5c7ddb2`). **Phase 2 (Quest) selesai**
+(kode + unit test + smoke test end-to-end lolos; **belum di-commit**). Phase 3
+(Scoring) belum dimulai.
 
 > Root `docs/HANDS-OFF.md` tetap jadi orientasi seluruh proyek (monorepo, titik
 > sambung frontend). File ini fokus ke state backend saja.
@@ -15,19 +15,27 @@ Phase 2 (Quest) belum dimulai.
 
 ## TL;DR
 
-- Phase 0 tuntas di commit `1e3f737 backend: phase 0 foundation`
-  (branch `feature/backend/m`).
-- **Phase 1 (User & Auth) selesai (belum di-commit).** Endpoint hidup:
+- Phase 0 + Phase 1 ter-commit di `5c7ddb2` (branch `feature/backend/m`, sudah
+  di-merge dgn `main`). Endpoint hidup:
   `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/me`,
-  `PATCH /api/v1/me`. `make fmt && vet && build && test` bersih; unit test
-  service user hijau. **Smoke test curl end-to-end belum dijalankan** —
-  butuh Postgres (Docker daemon mati saat implementasi).
-- `contracts/openapi.yaml`: semua response 2xx berbadan kini dibungkus
-  `{"data": ...}` (ADR-024 baru) — cocok dengan `httpx.Data`. Masih valid
+  `PATCH /api/v1/me`. `make -C apps/backend fmt vet build test` bersih; unit
+  test service user hijau; smoke test end-to-end lolos.
+- **Phase 2:** module `quest` lengkap. Endpoint hidup (semua terproteksi):
+  `GET/POST /api/v1/quests`, `GET /api/v1/quests/today`,
+  `PATCH/DELETE /api/v1/quests/{questId}`,
+  `POST /api/v1/quests/{questId}/complete|uncomplete`. Poin **belum** bertambah —
+  `ScoreAwarder` = `noopScorer` di `internal/server/scorer.go` (`// TODO(T3.9)`).
+- `contracts/openapi.yaml`: semua response 2xx dibungkus `{"data": ...}`
+  (**ADR-025**); `QuestResponse` dapat `points` (**ADR-026**). Valid
   (redocly: 0 error, 3 warning benign).
-- Mulai berikutnya: `apps/backend/docs/tasks/phase-02-quest.md`, kerjakan
-  **T2.1 → T2.10 berurutan**. Sebelum itu: jalankan Postgres + smoke test
-  Phase 1 (lihat bawah), lalu commit Phase 1.
+- **Infra dev lewat root `Makefile`** (ADR-024): `make up` / `make down` /
+  `make backend`. Kredensial Postgres di `.env.docker` (gitignored, template
+  `.env.docker.example`); `apps/backend/.env` punya `DATABASE_URL` + `HTTP_PORT`
+  sendiri. **Catatan lokal saat ini:** container `questday_postgres` map host
+  **5433**, `apps/backend/.env` pakai `HTTP_PORT=8001` → server di `:8001`,
+  DB di `localhost:5433`.
+- Berikutnya: `apps/backend/docs/tasks/phase-03-scoring.md`, **T3.1 → T3.11
+  berurutan**. Sebelum itu: commit Phase 2.
 
 ---
 
@@ -36,8 +44,10 @@ Phase 2 (Quest) belum dimulai.
 1. `AGENTS.md` (root) — aturan keras & batasan.
 2. **File ini** — apa yang sudah/belum ada.
 3. `docs/ARCHITECTURE.md` — bentuk sistem, aturan dependensi.
-4. `docs/DECISIONS.md` — 23 ADR. **ADR-023 baru** (registry error mapper).
-5. `apps/backend/docs/tasks/phase-01-user-auth.md` — task Phase 1.
+4. `docs/DECISIONS.md` — 27 ADR. Relevan backend terbaru: **ADR-023** (registry
+   error mapper), **ADR-024** (root Makefile + `.env.docker`), **ADR-025**
+   (amplop response `{"data":...}`), **ADR-026** (`QuestResponse.points`).
+5. `apps/backend/docs/tasks/phase-03-scoring.md` — task Phase 3 (berikutnya).
 6. `docs/GUIDES.md` §2 — resep menambah endpoint.
 7. `contracts/openapi.yaml` — kontrak; acuan bentuk `dto.go`.
 
@@ -68,7 +78,9 @@ Phase 2 (Quest) belum dimulai.
 | `internal/server/{server.go, router.go, health.go}` | **Terisi (Phase 1, minimal).** `server.New(cfg, db)` rakit `auth.NewJWT` + `user.New` + `buildRouter`. Router: chi middleware (RequestID/Logger/Recoverer), `/healthz` + `/readyz` (readyz sudah ping DB), `/api/v1` dengan split publik vs group ber-`Authenticator`. Graceful shutdown penuh & CORS di Phase 4 (T4.2–T4.4). |
 | `internal/platform/middleware/middleware.go` | **Terisi (T1.8).** `Authenticator(verifier auth.Verifier)` + helper `WithUserID`/`UserIDFrom`/`WithTimezone`/`TimezoneFrom` (key tipe privat `ctxKey`). Isi userID **dan** timezone dari JWT claims ke context. |
 | `internal/modules/user/**` | **Terisi (Phase 1).** 8 file + `service_test.go`. Semua rute lewat `RegisterPublicRoutes` / `RegisterProtectedRoutes`. `New(db, issuer)` daftarkan error mapping (ADR-023): `ErrEmailTaken`→409 `email_taken`, `ErrInvalidCredential`→401 `invalid_credential`, `ErrUserNotFound`→404 `user_not_found`. `Module.svc` disimpan untuk `AsUserDirectory()` (T3.4). |
-| `internal/modules/quest/**`, `internal/modules/scoring/**` | Stub. Phase 2 & 3. |
+| `internal/modules/quest/**` | **Terisi (Phase 2).** 8 file + `domain_test.go` + `service_test.go`. Port `ScoreAwarder` (milik quest, ADR-005). `New(db, scorer)` daftar error mapping (ADR-023): `ErrQuestNotFound`→404 `quest_not_found`, `ErrNotOwner`→**404 `quest_not_found`** (kode sama, jangan bocor), `ErrAlreadyCompleted`→409 `already_completed`, `ErrNotCompleted`→409 `not_completed`. Poin cuma di `domain.go` (`pointsEasy/Medium/Hard` = 5/10/20). |
+| `internal/server/scorer.go` | **Baru (Phase 2).** `noopScorer{}` — pemenuhan sementara `quest.ScoreAwarder`. `// TODO(T3.9)` ganti dgn `scoringMod.AsScoreAwarder()`. |
+| `internal/modules/scoring/**` | Stub. Phase 3. |
 | `internal/modules/achievement/**` | **Jangan disentuh** — v2 (ADR-010). Tetap tak di-mount. |
 | Test untuk `httpx`, `validator`, `database` | Belum ada. Boleh ditambah saat menyentuhnya. |
 
@@ -126,66 +138,82 @@ Phase 2 (Quest) belum dimulai.
   (`errors.As`), bukan `strings.Contains`.
 - `handler` bikin `validator.New()` sendiri lewat `user.New` (signature `New(db,
   issuer)` dipertahankan sesuai T1.7 — validator tak ikut parameter).
-- **ADR-024 (baru): amplop response sukses `{"data": ...}`.** Handler sukses
-  wajib lewat `httpx.Data` (bukan `httpx.JSON` mentah). `register` pakai `200`
-  (bukan `201`) sesuai kontrak. Kontrak sudah dibungkus untuk semua endpoint
-  (termasuk Phase 2/3). ADR count kini **25**.
-
-### BELUM dilakukan untuk Phase 1
-
-1. **Smoke test curl end-to-end** (butuh Postgres; Docker daemon mati saat
-   implementasi). Jalankan dulu sebelum lanjut Phase 2 — lihat bawah.
-2. **Commit Phase 1.**
+- **ADR-025: amplop response sukses `{"data": ...}`.** Handler sukses wajib lewat
+  `httpx.Data` (bukan `httpx.JSON` mentah). `register` pakai `200` (bukan `201`)
+  sesuai kontrak. Kontrak sudah dibungkus untuk semua endpoint (termasuk
+  Phase 2/3). *(Merge `main` membawa ADR-024 = root Makefile; ADR "amplop" jadi
+  ADR-025.)*
+- **Smoke test end-to-end Phase 1: LOLOS** (register→login→`GET /me` 401 tanpa
+  token / 200 dgn token → `PATCH /me` menerbitkan token baru ber-`tz` baru →
+  tak ada field password di response → password salah = 401 `invalid_credential`).
 
 ---
 
-## Perangkap yang menunggu di Phase 2
+## Cara Phase 2 dikerjakan (sudah selesai — untuk konteks pembaca kode)
 
-- **`ErrNotOwner` → HTTP 404**, bukan 403 — jangan bocorkan bahwa quest itu
-  milik orang lain (daftarkan mapping-nya begitu).
-- **Perangkap chi:** daftarkan `/quests/today` **sebelum** `/quests/{questId}`.
-- **`quest.service` terima `localDate` sebagai argumen** — dilarang panggil
-  `time.Now()`. Handler hitung "hari ini" dari `middleware.TimezoneFrom`
-  (fallback `Asia/Jakarta`).
-- **Port `ScoreAwarder` milik `quest`** (bukan `scoring`); Phase 2 inject
-  `noopScorer{}` sementara.
+- **`ErrNotOwner` → 404 `quest_not_found`** (kode sama dgn not-found; tak bocor).
+  Ekstra: `repo.GetQuest` sudah difilter `user_id` → praktis quest orang lain
+  langsung `ErrQuestNotFound`; cek `q.UserID != userID` di service tetap ada
+  sebagai pertahanan kedua & supaya testable dgn fake repo.
+- **`localDateFrom(r)` di `quest/handler.go`** menghitung tanggal lokal user dari
+  `middleware.TimezoneFrom` (fallback `Asia/Jakarta`), lalu `time.Date(...,
+  time.UTC)` jam 00:00 → dipakai sebagai kolom `date`. `quest/service.go`
+  menerima `localDate` sebagai argumen, **nol `time.Now()`**.
+- **Port `ScoreAwarder`** didefinisikan di `quest/service.go` (milik quest).
+  `internal/server/scorer.go` isi `noopScorer{}` sementara (`// TODO(T3.9)`).
+- **`quest.Points()` = satu-satunya sumber poin** (5/10/20). `QuestResponse.points`
+  & `QuestLog.PointsAwarded` diisi dari sana. Request tak pernah kirim poin.
+- **Status kode per kontrak:** `POST /quests` → 201; `PATCH` → 200;
+  `complete` → 200 `QuestLogResponse`; `uncomplete` & `DELETE` → 204.
+- **`quest.New(db, scorer)`** — `validator.New()` dibuat di dalamnya (pola sama
+  `user.New`).
+- **Smoke test end-to-end Phase 2: LOLOS** — create(points=10)→today(false)→
+  list→complete(200)→today(true)→complete lagi(409 `already_completed`)→
+  uncomplete(204)→patch difficulty=hard(points→20)→archive(204)→today items
+  kosong→quest user lain complete = 404 `quest_not_found`.
 
 ---
 
-## Cara memulai sesi berikutnya (smoke test Phase 1 + Phase 2)
+## Perangkap yang menunggu di Phase 3 (Scoring)
+
+- **Port `UserDirectory` milik `scoring`** (bukan `user`) — `scoring` SQL
+  **tak boleh** JOIN ke `users` (ADR-014). `user.Module.svc` sudah disimpan untuk
+  `AsUserDirectory()` (T3.4).
+- **T3.9:** ganti `noopScorer{}` di `internal/server/scorer.go` +
+  `server.New` dgn `scoringMod.AsScoreAwarder()`. Urutan instansiasi:
+  user → scoring → quest. `grep -rn noopScorer` harus kosong setelahnya.
+- **T3.10 / ADR-016:** atomicity `CreateLog` + `OnQuestCompleted` (sekarang
+  berurutan di `quest/service.go CompleteQuest`) — putuskan single-tx atau
+  kompensasi, tulis ADR-016.
+- **`LevelForXP` & `NextStreak`** = satu-satunya sumber kurva level & aturan
+  streak. Uncomplete rollback poin saja, streak dibiarkan (ADR-009).
+
+---
+
+## Cara memulai sesi (infra + baseline)
 
 ```bash
-# dari root repo — nyalakan Docker Desktop dulu
-docker compose -f docker-compose.dev.yml up -d          # Postgres
+# dari root repo
+make up                                  # Postgres (docker compose, --env-file .env.docker)
+make -C apps/backend migrate-up          # 6 tabel
+make -C apps/backend fmt vet build test  # harus hijau
 
-cd apps/backend
-make migrate-up                                          # 6 tabel
-make fmt && make vet && make build && make test          # harus hijau
-
-make run &                                               # server :8080
-# smoke test Phase 1:
-TOKEN=$(curl -sX POST localhost:8080/api/v1/auth/register \
-  -d '{"email":"a@b.c","password":"rahasia123","display_name":"A"}' | sed 's/.*"token":"\([^"]*\)".*/\1/')
-curl -sX POST localhost:8080/api/v1/auth/login -d '{"email":"a@b.c","password":"rahasia123"}'
-curl -si  localhost:8080/api/v1/me                                   # -> 401
-curl -si  localhost:8080/api/v1/me -H "Authorization: Bearer $TOKEN" # -> 200
-curl -sX PATCH localhost:8080/api/v1/me -H "Authorization: Bearer $TOKEN" \
-  -d '{"timezone":"Asia/Makassar"}'                                  # -> AuthResponse, token baru
-curl -s localhost:8080/api/v1/me -H "Authorization: Bearer $TOKEN" | grep -i password  # -> kosong
+make backend                             # server via air (port dari apps/backend/.env)
 ```
 
-Kalau hijau: commit Phase 1, lalu buka `docs/tasks/phase-02-quest.md` dan
-kerjakan **T2.1 → T2.10** berurutan.
+Lokal saat ini: DB `localhost:5433`, server `:8001` (lihat `apps/backend/.env`).
+Kalau `make up` gagal "container name in use", container Postgres sudah jalan —
+lanjut saja. Smoke test Phase 1 & Phase 2 ada di file tugas masing-masing.
 
 ---
 
-## Verifikasi baseline Phase 0 (kalau ragu masih sehat)
+## Verifikasi baseline (kalau ragu masih sehat)
 
 | Cek | Harapan |
 |---|---|
-| `make fmt && make vet && make build && make test` | bersih / PASS |
-| `make migrate-up` lalu `make migrate-down` lalu `make migrate-up` | tanpa error, 6 tabel |
+| `make -C apps/backend fmt vet build test` | bersih / PASS |
+| `make -C apps/backend migrate-up` lalu `migrate-down` lalu `migrate-up` | tanpa error, 6 tabel |
 | `grep -c TODO contracts/openapi.yaml` | `0` |
 | `npx @redocly/cli@latest lint contracts/openapi.yaml` | valid (3 warning benign) |
 | `grep -rn "questday/internal/modules" internal/platform/` | kosong (platform netral) |
-| `grep -c "^## ADR-" docs/DECISIONS.md` | `25` (ADR-001..024 + template) |
+| `grep -c "^## ADR-" docs/DECISIONS.md` | `27` (ADR-001..026 + template) |

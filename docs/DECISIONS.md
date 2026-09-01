@@ -346,6 +346,25 @@ handler sukses (bukan `httpx.JSON` mentah). Register memakai `200` (bukan `201`)
 sesuai kontrak. Endpoint Phase 2/3 yang schema-nya sudah ada di kontrak ikut
 dibungkus sekarang; implementasinya nanti tinggal pakai `httpx.Data`.
 
+## ADR-026 — `QuestResponse` menyertakan `points` hasil `Quest.Points()`
+
+**Status:** Diterima
+**Konteks:** Frontend perlu menampilkan bobot tiap quest ("Lari 5k — 10 poin") di
+kartu quest & halaman today. Nilai poin ditentukan `Difficulty` lewat
+`Quest.Points()` (ADR-007) dan **tidak** disimpan sebagai kolom. `QuestResponse`
+versi awal kontrak tak punya field ini, jadi klien harus menduplikasi tabel poin
+di sisi frontend — melanggar prinsip "aturan poin satu sumber".
+**Keputusan:** `QuestResponse` mendapat field `points` (integer, `required`,
+read-only) yang diisi mapper `toQuestResponse` dari `q.Points()`. Tabel poin
+tetap **hanya** di `quest/domain.go` (`pointsEasy/pointsMedium/pointsHard` =
+5/10/20). Request (`CreateQuestRequest`/`UpdateQuestRequest`) **tidak** menerima
+`points` — selalu turunan `difficulty`. `contracts/openapi.yaml` diperbarui
+berbarengan.
+**Konsekuensi:** Klien tak perlu tahu rumus poin. Kalau nanti poin jadi dinamis
+(mis. bonus streak), `points` di response otomatis ikut — cukup ubah
+`Quest.Points()`. Nilai 5/10/20 sendiri masih di bawah ADR-007 ("bisa
+ditinjau"), bukan ADR baru.
+
 ---
 
 <!--

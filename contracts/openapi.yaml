@@ -611,6 +611,7 @@ components:
         - category
         - difficulty
         - recurrence
+        - points
         - active
         - created_at
       properties:
@@ -631,6 +632,11 @@ components:
           enum: [easy, medium, hard]
         recurrence:
           type: string
+        points:
+          type: integer
+          description: >
+            Poin yang diberikan saat quest ini diselesaikan, hasil
+            Quest.Points() (turunan difficulty, ADR-007/ADR-026). Read-only.
         active:
           type: boolean
         created_at:
