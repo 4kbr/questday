@@ -281,6 +281,26 @@ saat startup — urutan registrasi tak penting karena kunci adalah sentinel
 error. Registrasi yang lupa → error jatuh ke 500, ketahuan saat test. T4.5
 tinggal memverifikasi kelengkapan, bukan merancang ulang.
 
+## ADR-024 — Amplop response sukses: `{"data": ...}`
+
+**Status:** Diterima
+**Konteks:** Phase 0 menyediakan `platform/httpx.Data` yang membungkus payload
+sukses jadi `{"data": <payload>}`, dan ADR-021 sudah mengasumsikan frontend
+"meniru envelope response". Tapi `contracts/openapi.yaml` versi awal menuliskan
+schema response sukses secara polos (mis. `AuthResponse` langsung), tanpa
+pembungkus — kontradiksi yang akan menyesatkan `npm run gen:api` dan MSW.
+**Keputusan:** Semua response sukses berbadan JSON dibungkus
+`{"data": <payload>}` (pakai `httpx.Data`). Error tetap `{"error": {code,
+message}}` (`httpx.Error`/`WriteError`). Response `204` tak berbadan.
+`contracts/openapi.yaml` diperbarui: tiap response 2xx berbadan kini
+`type: object, required: [data], properties.data: <schema-lama>`. Health probe
+(`/healthz`, `/readyz`) tetap polos `HealthResponse` — di luar `/api/v1`, bukan
+bagian amplop API.
+**Konsekuensi:** Satu bentuk seragam untuk klien; `httpx.Data` jadi jalur wajib
+handler sukses (bukan `httpx.JSON` mentah). Register memakai `200` (bukan `201`)
+sesuai kontrak. Endpoint Phase 2/3 yang schema-nya sudah ada di kontrak ikut
+dibungkus sekarang; implementasinya nanti tinggal pakai `httpx.Data`.
+
 ---
 
 <!--

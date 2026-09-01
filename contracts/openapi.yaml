@@ -2,7 +2,14 @@ openapi: "3.1.0"
 info:
   title: QuestDay API
   version: "0.1.0"
-  description: API untuk pencatat quest harian dengan gamifikasi (poin, XP, streak).
+  description: >
+    API untuk pencatat quest harian dengan gamifikasi (poin, XP, streak).
+
+
+    Amplop response (ADR-024): body sukses selalu dibungkus
+    `{"data": <payload>}` (lihat platform/httpx `Data`); body error selalu
+    `{"error": {"code", "message"}}` (schema ErrorResponse). Response 204
+    tak berbadan.
   license:
     name: Proprietary
     url: https://questday.example.com/license
@@ -43,7 +50,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -69,7 +80,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -91,7 +106,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -116,7 +135,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -139,7 +162,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScoreResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScoreResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -160,7 +187,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StreakResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StreakResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -182,9 +213,13 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/QuestResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QuestResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -207,7 +242,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuestResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/QuestResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -230,7 +269,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TodayQuestsResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TodayQuestsResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -257,7 +300,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuestResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/QuestResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -303,7 +350,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuestLogResponse'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/QuestLogResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -357,9 +408,13 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/LeaderboardEntry'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
