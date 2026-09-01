@@ -86,6 +86,7 @@ Ikuti GUIDES:
 1. Jika memungkinkan selalu gunakan skill `caveman` sebagai default response jawaban dan tanpa mengurangi kualitas jawaban.
 2. Jangan kerjakan task sendiri, Selalu panggil subagents jika memungkinkan untuk membagi dan menyelesaikan task yang diberikan.
 3. Untuk main agent dan subagents, Selalu gunakan `high` effort dan model untuk mode planning dan `medium` atau `low` effort dan model untuk mode implementasi. sehingga bisa menghasilkan jawaban yang lebih optimal dengan implementasi yang efisien dan efektif untuk menghemat token.
+4. Selalu update HANDS-OFF.md setiap kali selesai mengerjakan task di app yang dikerjakan misal di backend/docs/HANDS-OFF.md, frontend/docs/HANDS-OFF.md sesuaikan dengan task yang dikerjakan. sehingga bisa mempermudah agent lain untuk memahami state proyek saat ini. root HANDS-OFF.md hanya untuk main agent yang mengerjakan task di root.
 
 ---
 
