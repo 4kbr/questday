@@ -285,6 +285,43 @@ func TestCompleteQuest_DayBoundary(t *testing.T) {
 	}
 }
 
+// erroringScorer selalu gagal — untuk menguji kompensasi ADR-016.
+type erroringScorer struct{ calls int }
+
+func (s *erroringScorer) OnQuestCompleted(context.Context, string, string, int, time.Time) error {
+	s.calls++
+	return errors.New("scorer meledak")
+}
+func (s *erroringScorer) OnQuestUncompleted(context.Context, string, string, int, time.Time) error {
+	return errors.New("scorer meledak")
+}
+
+// ADR-016: kalau OnQuestCompleted gagal, CompleteQuest harus menghapus log yang
+// baru dibuat supaya tak ada log yatim.
+func TestCompleteQuest_ScorerFails_NoOrphanLog(t *testing.T) {
+	repo := newFakeRepo()
+	sc := &erroringScorer{}
+	svc := newService(repo, sc)
+	seedQuest(repo, "q1", "u1", DifficultyMedium)
+	d := date(2026, 9, 1)
+
+	_, err := svc.CompleteQuest(context.Background(), "u1", "q1", d)
+	if err == nil {
+		t.Fatal("CompleteQuest harus mengembalikan error saat scorer gagal")
+	}
+	if sc.calls != 1 {
+		t.Fatalf("scorer dipanggil %d kali, mau 1", sc.calls)
+	}
+	if _, ok := repo.logs[logKey("q1", d)]; ok {
+		t.Fatal("log yatim tertinggal — kompensasi ADR-016 gagal")
+	}
+	// harus bisa complete lagi setelah kompensasi
+	svc2 := newService(repo, &fakeScorer{})
+	if _, err := svc2.CompleteQuest(context.Background(), "u1", "q1", d); err != nil {
+		t.Fatalf("complete ulang setelah kompensasi: %v", err)
+	}
+}
+
 func TestGetToday_MarksCompleted(t *testing.T) {
 	svc, repo, _ := newSvc()
 	seedQuest(repo, "q1", "u1", DifficultyEasy)

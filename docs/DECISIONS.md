@@ -187,14 +187,28 @@ beberapa tabel sekaligus. UUID v7 terurut waktu, jadi indeks tidak terfragmentas
 seperti v4. ID tidak bisa ditebak — aman untuk dipakai di URL. Biaya: 16 byte per
 id, lebih besar dari BIGSERIAL.
 
-## ADR-016 — (dipesan) Atomicity penyelesaian quest
+## ADR-016 — Atomicity penyelesaian quest: kompensasi manual (MVP)
 
-**Status:** Belum diputuskan
-**Konteks:** Nomor ini disisakan untuk keputusan atomicity "buat log + tambah
-poin" yang akan diambil saat mengerjakan backend T3.10
-(`apps/backend/docs/tasks/phase-03-scoring.md`).
-**Keputusan:** —
-**Konsekuensi:** —
+**Status:** Diterima (MVP)
+**Konteks:** `quest.service.CompleteQuest` melakukan dua tulisan ke DB yang
+lintas-module: `repo.CreateLog` (tabel `quest_logs`, milik quest) lalu
+`scorer.OnQuestCompleted` (tabel `wallets`/`streaks`/`point_transactions`, milik
+scoring). Keduanya bukan satu transaksi. Kalau tulisan kedua gagal, log sudah
+terlanjur ada tapi poin tak pernah masuk — quest tampak selesai tanpa pahala.
+Opsi: (a) alirkan `*sql.Tx` lewat port `ScoreAwarder` / helper
+`platform/database.WithTx` + interface `execer` bersama; (b) biarkan berurutan
+lalu kompensasi manual saat gagal.
+**Keputusan:** Opsi (b) untuk MVP. `CompleteQuest` membungkus
+`scorer.OnQuestCompleted`; kalau error, ia memanggil `repo.DeleteLog(...)` untuk
+menghapus log yang baru dibuat, lalu mengembalikan error. Port `ScoreAwarder`
+tetap **murni** — tak ada `*sql.Tx` yang bocor ke kontrak antar-module. Perilaku
+ini dikunci oleh test (`TestCompleteQuest_ScorerFails_NoOrphanLog`).
+**Konsekuensi:** Ada jendela sangat kecil non-atomik antara `CreateLog` sukses
+dan `DeleteLog` kompensasi; kalau proses mati persis di situ, log yatim bisa
+tertinggal (jarang, dan `uncomplete` bisa membersihkannya secara manual). Dapat
+diterima untuk MVP. Jalur keluar kalau nanti perlu benar-benar atomik: ganti ke
+Opsi (a) lewat ADR baru yang men-supersede ini — `platform/database.WithTx` +
+repository yang menerima `execer` (`*sql.DB` atau `*sql.Tx`).
 
 ## ADR-017 — Frontend: React + Vite + TypeScript
 

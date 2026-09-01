@@ -53,6 +53,16 @@ func (f *fakeRepo) Update(_ context.Context, u User) error {
 	return nil
 }
 
+func (f *fakeRepo) ListNamesByIDs(_ context.Context, ids []string) (map[string]string, error) {
+	out := make(map[string]string, len(ids))
+	for _, id := range ids {
+		if u, ok := f.byID[id]; ok {
+			out[id] = u.DisplayName
+		}
+	}
+	return out, nil
+}
+
 // fakeIssuer mencatat argumen terakhir Issue.
 type fakeIssuer struct {
 	lastUserID string

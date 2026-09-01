@@ -4,9 +4,9 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
 `apps/backend`. **Baca sesudah `AGENTS.md` (root), sebelum menyentuh kode.**
 
 **Terakhir diperbarui:** 2026-09-01
-**Status:** Phase 0 + Phase 1 ter-commit (`5c7ddb2`). **Phase 2 (Quest) selesai**
-(kode + unit test + smoke test end-to-end lolos; **belum di-commit**). Phase 3
-(Scoring) belum dimulai.
+**Status:** Phase 0/1 ter-commit (`5c7ddb2`), Phase 2 (Quest) ter-commit
+(`0e408ab`). **Phase 3 (Scoring) selesai** (kode + unit test + smoke test
+end-to-end lolos; **belum di-commit**). MVP backend tinggal Phase 4 (Hardening).
 
 > Root `docs/HANDS-OFF.md` tetap jadi orientasi seluruh proyek (monorepo, titik
 > sambung frontend). File ini fokus ke state backend saja.
@@ -20,13 +20,19 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
   `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/me`,
   `PATCH /api/v1/me`. `make -C apps/backend fmt vet build test` bersih; unit
   test service user hijau; smoke test end-to-end lolos.
-- **Phase 2:** module `quest` lengkap. Endpoint hidup (semua terproteksi):
+- **Phase 2:** module `quest` lengkap. Endpoint (semua terproteksi):
   `GET/POST /api/v1/quests`, `GET /api/v1/quests/today`,
   `PATCH/DELETE /api/v1/quests/{questId}`,
-  `POST /api/v1/quests/{questId}/complete|uncomplete`. Poin **belum** bertambah —
-  `ScoreAwarder` = `noopScorer` di `internal/server/scorer.go` (`// TODO(T3.9)`).
+  `POST /api/v1/quests/{questId}/complete|uncomplete`.
+- **Phase 3:** module `scoring` lengkap + **gamifikasi hidup**. Endpoint
+  (terproteksi): `GET /api/v1/me/score`, `GET /api/v1/me/streak`,
+  `GET /api/v1/leaderboard?limit=`. `noopScorer` **dihapus** — `quest.New` kini
+  dapat `scoringMod.AsScoreAwarder()`. Complete quest menaikkan poin/XP/level +
+  streak; uncomplete rollback poin (streak tetap, ADR-009). ADR-016 diputuskan:
+  kompensasi manual (hapus log yatim bila scorer gagal).
 - `contracts/openapi.yaml`: semua response 2xx dibungkus `{"data": ...}`
-  (**ADR-025**); `QuestResponse` dapat `points` (**ADR-026**). Valid
+  (**ADR-025**); `QuestResponse` dapat `points` (**ADR-026**). Schema scoring
+  (`ScoreResponse`/`StreakResponse`/`LeaderboardEntry`) tak diubah. Valid
   (redocly: 0 error, 3 warning benign).
 - **Infra dev lewat root `Makefile`** (ADR-024): `make up` / `make down` /
   `make backend`. Kredensial Postgres di `.env.docker` (gitignored, template
@@ -34,8 +40,8 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
   sendiri. **Catatan lokal saat ini:** container `questday_postgres` map host
   **5433**, `apps/backend/.env` pakai `HTTP_PORT=8001` → server di `:8001`,
   DB di `localhost:5433`.
-- Berikutnya: `apps/backend/docs/tasks/phase-03-scoring.md`, **T3.1 → T3.11
-  berurutan**. Sebelum itu: commit Phase 2.
+- Berikutnya: `apps/backend/docs/tasks/phase-04-hardening.md`, **T4.1 → T4.8
+  berurutan** → MVP backend selesai. Sebelum itu: commit Phase 3.
 
 ---
 
@@ -44,10 +50,11 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
 1. `AGENTS.md` (root) — aturan keras & batasan.
 2. **File ini** — apa yang sudah/belum ada.
 3. `docs/ARCHITECTURE.md` — bentuk sistem, aturan dependensi.
-4. `docs/DECISIONS.md` — 27 ADR. Relevan backend terbaru: **ADR-023** (registry
+4. `docs/DECISIONS.md` — 27 ADR (ADR-016 kini **terisi**: atomicity =
+   kompensasi manual). Relevan backend terbaru: **ADR-023** (registry
    error mapper), **ADR-024** (root Makefile + `.env.docker`), **ADR-025**
    (amplop response `{"data":...}`), **ADR-026** (`QuestResponse.points`).
-5. `apps/backend/docs/tasks/phase-03-scoring.md` — task Phase 3 (berikutnya).
+5. `apps/backend/docs/tasks/phase-04-hardening.md` — task Phase 4 (berikutnya).
 6. `docs/GUIDES.md` §2 — resep menambah endpoint.
 7. `contracts/openapi.yaml` — kontrak; acuan bentuk `dto.go`.
 
@@ -78,8 +85,9 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
 | `internal/server/{server.go, router.go, health.go}` | **Terisi (Phase 1, minimal).** `server.New(cfg, db)` rakit `auth.NewJWT` + `user.New` + `buildRouter`. Router: chi middleware (RequestID/Logger/Recoverer), `/healthz` + `/readyz` (readyz sudah ping DB), `/api/v1` dengan split publik vs group ber-`Authenticator`. Graceful shutdown penuh & CORS di Phase 4 (T4.2–T4.4). |
 | `internal/platform/middleware/middleware.go` | **Terisi (T1.8).** `Authenticator(verifier auth.Verifier)` + helper `WithUserID`/`UserIDFrom`/`WithTimezone`/`TimezoneFrom` (key tipe privat `ctxKey`). Isi userID **dan** timezone dari JWT claims ke context. |
 | `internal/modules/user/**` | **Terisi (Phase 1).** 8 file + `service_test.go`. Semua rute lewat `RegisterPublicRoutes` / `RegisterProtectedRoutes`. `New(db, issuer)` daftarkan error mapping (ADR-023): `ErrEmailTaken`→409 `email_taken`, `ErrInvalidCredential`→401 `invalid_credential`, `ErrUserNotFound`→404 `user_not_found`. `Module.svc` disimpan untuk `AsUserDirectory()` (T3.4). |
-| `internal/modules/quest/**` | **Terisi (Phase 2).** 8 file + `domain_test.go` + `service_test.go`. Port `ScoreAwarder` (milik quest, ADR-005). `New(db, scorer)` daftar error mapping (ADR-023): `ErrQuestNotFound`→404 `quest_not_found`, `ErrNotOwner`→**404 `quest_not_found`** (kode sama, jangan bocor), `ErrAlreadyCompleted`→409 `already_completed`, `ErrNotCompleted`→409 `not_completed`. Poin cuma di `domain.go` (`pointsEasy/Medium/Hard` = 5/10/20). |
-| `internal/server/scorer.go` | **Baru (Phase 2).** `noopScorer{}` — pemenuhan sementara `quest.ScoreAwarder`. `// TODO(T3.9)` ganti dgn `scoringMod.AsScoreAwarder()`. |
+| `internal/modules/quest/**` | **Terisi (Phase 2).** 8 file + `domain_test.go` + `service_test.go`. Port `ScoreAwarder` (milik quest, ADR-005) — kini disuntik `scoring` sungguhan. Error mapping (ADR-023): `ErrQuestNotFound`→404 `quest_not_found`, `ErrNotOwner`→**404 `quest_not_found`** (kode sama, jangan bocor), `ErrAlreadyCompleted`→409 `already_completed`, `ErrNotCompleted`→409 `not_completed`. Poin cuma di `domain.go` (5/10/20). `CompleteQuest` kompensasi ADR-016: hapus log bila `OnQuestCompleted` gagal. |
+| `internal/modules/scoring/**` | **Terisi (Phase 3).** 8 file + `domain_test.go` + `service_test.go`. `LevelForXP`/`XPForLevel`/`NextStreak` = satu-satunya sumber kurva level & aturan streak. Port **`UserDirectory`** (milik scoring, ADR-014) diimplementasi `user.AsUserDirectory()` (`ListNamesByIDs`, `WHERE id = ANY($1)`). `New(db, dir)`, `AsScoreAwarder()`. SQL scoring **tak** JOIN `users`. Leaderboard nama fallback `"(pengguna dihapus)"`; `?limit=` clamp [1,100] default 20. Tak ada error domain (wallet/streak auto-default). |
+| `internal/server/scorer.go` | **DIHAPUS di Phase 3** (`noopScorer` sudah tak ada). `server.New` urutan: user → scoring → quest. |
 | `internal/modules/scoring/**` | Stub. Phase 3. |
 | `internal/modules/achievement/**` | **Jangan disentuh** — v2 (ADR-010). Tetap tak di-mount. |
 | Test untuk `httpx`, `validator`, `database` | Belum ada. Boleh ditambah saat menyentuhnya. |
@@ -160,7 +168,7 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
   time.UTC)` jam 00:00 → dipakai sebagai kolom `date`. `quest/service.go`
   menerima `localDate` sebagai argumen, **nol `time.Now()`**.
 - **Port `ScoreAwarder`** didefinisikan di `quest/service.go` (milik quest).
-  `internal/server/scorer.go` isi `noopScorer{}` sementara (`// TODO(T3.9)`).
+  Phase 2 sempat pakai `noopScorer` di `server`; **dihapus di Phase 3**.
 - **`quest.Points()` = satu-satunya sumber poin** (5/10/20). `QuestResponse.points`
   & `QuestLog.PointsAwarded` diisi dari sana. Request tak pernah kirim poin.
 - **Status kode per kontrak:** `POST /quests` → 201; `PATCH` → 200;
@@ -174,19 +182,54 @@ Dokumen orientasi untuk agent/kolaborator berikutnya yang mengerjakan
 
 ---
 
-## Perangkap yang menunggu di Phase 3 (Scoring)
+## Cara Phase 3 dikerjakan (sudah selesai — untuk konteks pembaca kode)
 
-- **Port `UserDirectory` milik `scoring`** (bukan `user`) — `scoring` SQL
-  **tak boleh** JOIN ke `users` (ADR-014). `user.Module.svc` sudah disimpan untuk
-  `AsUserDirectory()` (T3.4).
-- **T3.9:** ganti `noopScorer{}` di `internal/server/scorer.go` +
-  `server.New` dgn `scoringMod.AsScoreAwarder()`. Urutan instansiasi:
-  user → scoring → quest. `grep -rn noopScorer` harus kosong setelahnya.
-- **T3.10 / ADR-016:** atomicity `CreateLog` + `OnQuestCompleted` (sekarang
-  berurutan di `quest/service.go CompleteQuest`) — putuskan single-tx atau
-  kompensasi, tulis ADR-016.
-- **`LevelForXP` & `NextStreak`** = satu-satunya sumber kurva level & aturan
-  streak. Uncomplete rollback poin saja, streak dibiarkan (ADR-009).
+- **Kurva level** (`scoring/domain.go`, satu-satunya sumber, ADR-007):
+  `XPForLevel(n) = 25*n*(n+1) - 50` → ambang `0/100/250/450/700/1000/…`.
+  `LevelForXP` loop naik dari 1, tanpa cap. `PointsToNextLevel(xp)` diturunkan.
+- **XP == TotalPoints** untuk MVP; keduanya naik/turun bersama. `Level` selalu
+  dari `LevelForXP`. `OnQuestUncompleted` clamp `TotalPoints`/`XP` ≥ 0 dan
+  **tak menyentuh streak** (ADR-009).
+- **`NextStreak`** murni (tak `time.Now()`): hari sama → tetap; +1 hari → +1;
+  bolong/pertama → 1; `Longest` tak pernah turun.
+- **Port `UserDirectory`** (milik `scoring`, ADR-014) diimplementasi
+  `user.AsUserDirectory()` → `user.service.NamesByIDs` →
+  `repo.ListNamesByIDs` (`SELECT id, display_name FROM users WHERE id = ANY($1)`,
+  `[]string` langsung — pgx v5 stdlib meng-encode ke array). `scoring` & `user`
+  tak saling import; SQL scoring tak sebut `users`.
+- **ADR-016 = kompensasi manual.** `quest.CompleteQuest`: kalau
+  `scorer.OnQuestCompleted` gagal → `repo.DeleteLog(...)` lalu return error.
+  Dikunci test `TestCompleteQuest_ScorerFails_NoOrphanLog`.
+- **Server wiring** (`server.New`): `user.New` → `scoring.New(db,
+  userMod.AsUserDirectory())` → `quest.New(db, scoringMod.AsScoreAwarder())`.
+  `noopScorer` + `internal/server/scorer.go` dihapus.
+- **`/leaderboard`** tetap terproteksi (MVP). `?limit=` default 20, clamp
+  [1,100]. Nama ID tak dikenal → `"(pengguna dihapus)"`.
+- **Smoke test end-to-end Phase 3: LOLOS** — score/streak default
+  `{0,0,1,ptl:100}` / `{0,0,null}` → complete(hard=20) → score
+  `{20,20,1,ptl:80}`, streak `{1,1,"2026-09-01"}` → leaderboard
+  `[{rank:1,"P3 Alice",20}]` → uncomplete → score balik `{0,0,1,100}`, **streak
+  tetap** `{1,1,…}` → `?limit=999` clamp, 200.
+
+---
+
+## Perangkap yang menunggu di Phase 4 (Hardening)
+
+- **T4.1:** `server/health.go` sudah punya `healthHandler` + `readyHandler(db)`
+  (readyz sudah `PingContext`). T4.1 tinggal memoles bila perlu.
+- **T4.2–T4.4:** graceful shutdown penuh (`signal.NotifyContext` di `main.go`,
+  `Server.Shutdown` + `db.Close`), `http.Server` timeouts lengkap, CORS.
+  `main.go` saat ini belum graceful.
+- **T4.5:** verifikasi tabel error mapping lengkap lintas module (mapping
+  didaftar di tiap `New()` — user 3, quest 4, scoring 0).
+- **T4.6:** cek kontrak vs implementasi 1:1. Sudah diketahui: `contracts`
+  masih `servers: http://localhost:8080` & operasi `/me/score` dst punya
+  respons `404` yang **tak dipakai** implementasi (wallet/streak auto-default).
+  Putuskan: buang 404 dari kontrak atau biarkan (dokumentasikan).
+- **T4.7:** `Dockerfile` — cocokkan versi Go (`1.25`) & module path; `go.sum`
+  sudah ada.
+- Lokal: server `:8001`, DB `:5433` (lihat `apps/backend/.env`); infra via
+  root `make up`.
 
 ---
 

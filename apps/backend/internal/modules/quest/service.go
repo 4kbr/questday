@@ -158,7 +158,13 @@ func (s *service) CompleteQuest(ctx context.Context, userID, questID string, loc
 		return QuestLog{}, err
 	}
 
+	// ADR-016: dua write lintas-module tak dalam satu transaksi. Kalau scorer
+	// gagal, kompensasi manual — hapus log yang baru dibuat supaya tak ada log
+	// yatim (poin tak masuk tapi quest tampak selesai).
 	if err := s.scorer.OnQuestCompleted(ctx, userID, questID, points, localDate); err != nil {
+		if delErr := s.repo.DeleteLog(ctx, userID, questID, localDate); delErr != nil {
+			return QuestLog{}, fmt.Errorf("quest: award score: %w (kompensasi gagal: %v)", err, delErr)
+		}
 		return QuestLog{}, fmt.Errorf("quest: award score: %w", err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"questday/internal/modules/quest"
+	"questday/internal/modules/scoring"
 	"questday/internal/modules/user"
 	"questday/internal/platform/auth"
 	"questday/internal/platform/middleware"
@@ -16,10 +17,11 @@ import (
 // routerDeps adalah bahan yang dibutuhkan buildRouter. Dikumpulkan di server.New
 // (composition root).
 type routerDeps struct {
-	db       *sql.DB
-	verifier auth.Verifier
-	userMod  *user.Module
-	questMod *quest.Module
+	db         *sql.DB
+	verifier   auth.Verifier
+	userMod    *user.Module
+	questMod   *quest.Module
+	scoringMod *scoring.Module
 }
 
 // buildRouter memasang middleware global, health check, lalu mem-mount tiap
@@ -42,6 +44,7 @@ func buildRouter(d routerDeps) http.Handler {
 			r.Use(middleware.Authenticator(d.verifier))
 			d.userMod.RegisterProtectedRoutes(r)
 			d.questMod.RegisterRoutes(r)
+			d.scoringMod.RegisterRoutes(r)
 		})
 	})
 

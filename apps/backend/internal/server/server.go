@@ -13,6 +13,7 @@ import (
 
 	"questday/internal/config"
 	"questday/internal/modules/quest"
+	"questday/internal/modules/scoring"
 	"questday/internal/modules/user"
 	"questday/internal/platform/auth"
 )
@@ -26,15 +27,18 @@ type Server struct {
 func New(cfg config.Config, db *sql.DB) *Server {
 	jwt := auth.NewJWT(cfg.JWTSecret, cfg.JWTTTL)
 
+	// Urutan penting: user dulu (dibutuhkan scoring lewat UserDirectory),
+	// lalu scoring, lalu quest (butuh scoring lewat ScoreAwarder).
 	userMod := user.New(db, jwt)
-	// TODO(T3.9): ganti noopScorer{} dengan scoringMod.AsScoreAwarder().
-	questMod := quest.New(db, noopScorer{})
+	scoringMod := scoring.New(db, userMod.AsUserDirectory())
+	questMod := quest.New(db, scoringMod.AsScoreAwarder())
 
 	handler := buildRouter(routerDeps{
-		db:       db,
-		verifier: jwt,
-		userMod:  userMod,
-		questMod: questMod,
+		db:         db,
+		verifier:   jwt,
+		userMod:    userMod,
+		questMod:   questMod,
+		scoringMod: scoringMod,
 	})
 
 	return &Server{
