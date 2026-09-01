@@ -143,17 +143,17 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 
 | | ID | Task |
 |---|---|---|
-| [ ] | F1.1 | `apis/auth.api.ts` |
-| [ ] | F1.2 | `stores/auth.store.ts` (zustand + persist) |
-| [ ] | F1.3 | `features/auth/schemas` — zod, cocok dgn validasi backend |
-| [ ] | F1.4 | `features/auth/queries` — `useLogin`, `useRegister`, `useMe` |
-| [ ] | F1.5 | Halaman Login |
-| [ ] | F1.6 | Halaman Register |
-| [ ] | F1.7 | `routes/` — `ProtectedRoute`, `GuestRoute`, konstanta path |
-| [ ] | F1.8 | `components/layout/AppShell` — sidebar + topbar |
-| [ ] | F1.9 | Logout: bersihkan token **dan** cache Query |
-| [ ] | F1.10 | MSW handler auth |
-| [ ] | F1.11 | Test phase 1 |
+| [x] | F1.1 | `apis/auth.api.ts` |
+| [x] | F1.2 | `stores/auth.store.ts` (zustand + persist) |
+| [x] | F1.3 | `features/auth/schemas` — zod, cocok dgn validasi backend |
+| [x] | F1.4 | `features/auth/queries` — `useLogin`, `useRegister`, `useMe` |
+| [x] | F1.5 | Halaman Login |
+| [x] | F1.6 | Halaman Register |
+| [x] | F1.7 | `routes/` — `ProtectedRoute`, `GuestRoute`, konstanta path |
+| [x] | F1.8 | `components/layout/AppShell` — sidebar + topbar |
+| [x] | F1.9 | Logout: bersihkan token **dan** cache Query |
+| [x] | F1.10 | MSW handler auth |
+| [x] | F1.11 | Test phase 1 |
 
 ### Phase 2 — Quest → [phase-02-quest.md](phase-02-quest.md)
 

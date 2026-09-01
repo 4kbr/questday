@@ -9,15 +9,17 @@ Dokumen orientasi cepat khusus **frontend**. Untuk state seluruh proyek lihat
 
 ## TL;DR
 
-**Phase 0 (Setup & fondasi) SELESAI & terverifikasi.** Belum ada fitur berisi —
-tapi seluruh lapisan pondasi (Vite + tema + lapisan API + router + MSW + test)
-sudah jalan.
+**Phase 0 (Setup & fondasi) + Phase 1 (Auth & shell) SELESAI & terverifikasi.**
+Pondasi (Vite + tema + lapisan API + router + MSW + test) berdiri, dan di
+atasnya kini ada sesi auth penuh: register/login/logout, rute terlindungi,
+shell SaaS (sidebar + topbar).
 
-**Belum di-commit.** Semua file `apps/frontend/*` masih untracked; `README.md`
-termodifikasi. `docs/tasks/`, `contracts/`, `AGENTS.md`, root `docs/` tak tersentuh.
+**Belum di-commit.** Semua file `apps/frontend/*` masih untracked/termodifikasi.
+`docs/tasks/`, `contracts/`, `AGENTS.md`, root `docs/` tak tersentuh (selain
+dokumen ini + `docs/tasks/README.md` untuk papan progres).
 
-**Mulai dari sini:** `apps/frontend/docs/tasks/phase-01-auth.md`, kerjakan
-**F1.1** dst berurutan.
+**Mulai dari sini:** `apps/frontend/docs/tasks/phase-02-quest.md`, kerjakan
+**F2.1** dst berurutan.
 
 ---
 
@@ -26,7 +28,7 @@ termodifikasi. `docs/tasks/`, `contracts/`, `AGENTS.md`, root `docs/` tak tersen
 | Phase | File task | Status |
 |---|---|---|
 | 0 — Setup & fondasi | `docs/tasks/phase-00-setup.md` | ✅ **selesai** (F0.1–F0.12) |
-| 1 — Auth & shell | `docs/tasks/phase-01-auth.md` | ⬜ belum mulai |
+| 1 — Auth & shell | `docs/tasks/phase-01-auth.md` | ✅ **selesai** (F1.1–F1.11) |
 | 2 — Quest | `docs/tasks/phase-02-quest.md` | ⬜ belum mulai |
 | 3 — Scoring | `docs/tasks/phase-03-scoring.md` | ⬜ belum mulai |
 | 4 — Settings & polish | `docs/tasks/phase-04-polish.md` | ⬜ belum mulai |
@@ -59,15 +61,16 @@ Semua bekerja; batch berikutnya harus sadar ini:
 
 ## Keputusan yang mengikat (dibuat selama Phase 0 — jangan ditabrak diam-diam)
 
-1. **Kontrak = sumber kebenaran. TIDAK ADA unwrap `{data}`.** `api` mengembalikan
-   `res.data` **mentah** sesuai schema. Hanya **error** yang ber-amplop:
+1. **Response sukses BER-AMPLOP `{data}` (ADR-025).** Setiap response sukses
+   berbadan JSON dibungkus `{"data": <payload>}`; `src/apis/client.ts`
+   meng-unwrap sekali di interceptor sehingga `res.data` = payload langsung
+   sesuai schema. `register` mengembalikan **200** (bukan 201). `/healthz` polos
+   (di luar amplop) — dibiarkan apa adanya. **Error** tetap ber-amplop:
    `{"error":{code,message}}` → diubah jadi `ApiError(status, code, message)` di
-   `src/apis/client.ts`. Menyimpang dari teks draf F0.6/F0.9 yang berasumsi ada
-   `{data}`. Fitur membedakan perlakuan lewat **`ApiError.code`**
+   `src/apis/client.ts`. Fitur membedakan perlakuan lewat **`ApiError.code`**
    (`already_completed`, `email_taken`, dst — lihat deskripsi `ErrorResponse` di
-   `contracts/openapi.yaml`), **bukan** mencocokkan string pesan. Kalau backend
-   nanti benar-benar pakai `{data}`, revisi **kontrak + `client.ts` + test**
-   bersama, dan catat ADR.
+   `contracts/openapi.yaml`), **bukan** mencocokkan string pesan.
+   (Membalik keputusan awal Phase 0 yang mengasumsikan tak ada `{data}`.)
 2. **oxlint, bukan ESLint** (menyimpang dari F0.10, disetujui pemilik kode).
    Prettier tetap dipakai untuk format.
 3. **`no-restricted-imports` mem-blokir SELURUH `@/features/*`.** oxlint tak bisa
@@ -84,6 +87,14 @@ Semua bekerja; batch berikutnya harus sadar ini:
 
 Semua keputusan ini juga terangkum di `apps/frontend/README.md`.
 
+### Rekonsiliasi pasca-merge (2026-09-01)
+
+`main` di-merge membawa **ADR-025**. Penyesuaian frontend: `schema.gen.ts`
+di-regenerate (response 2xx kini `{data: <schema>}`), `client.ts` sekarang
+meng-unwrap `{data}` di interceptor sukses, key localStorage default diselaraskan
+ke `questday-auth` (hyphen, cocok dgn `persist` F1.2), dan `VITE_PORT` didukung
+(`.env.example` + `vite.config.ts` + `vite-env.d.ts`). `register` kini 200.
+
 ---
 
 ## Yang sudah ada di `src/`
@@ -93,29 +104,62 @@ src/
 ├── apis/
 │   ├── client.ts        # axios instance TUNGGAL + ApiError + setTokenGetter/setUnauthorizedHandler
 │   ├── client.test.ts   # map error→ApiError, success raw, header Bearer
+│   ├── auth.api.ts       # register / login / me — murni HTTP (F1.1)
 │   ├── schema.gen.ts     # GENERATE dari contracts/openapi.yaml — jangan diedit tangan
 │   └── types.ts          # alias ramah (User, AuthResponse, Quest, Score, Streak, ...)
 ├── lib/
 │   ├── query-client.ts  # QueryClient: staleTime 30s, no-retry 4xx, refetchOnWindowFocus
+│   ├── session.ts        # endSession() — SATU jalur teardown (logout + queryClient.clear() + redirect); wiring setTokenGetter/setUnauthorizedHandler (F1.9)
 │   └── utils.ts          # cn() dari shadcn
 ├── routes/
 │   ├── paths.ts         # PATHS — konstanta, jangan tulis path string literal di komponen
-│   ├── index.tsx         # createBrowserRouter, 6 route → placeholder page
+│   ├── index.tsx         # createBrowserRouter — GuestRoute (login/register) + ProtectedRoute (nested) → 6 route
+│   ├── ProtectedRoute.tsx / ProtectedRoute.test.tsx  # tanpa token → /login (state.from); ada token → <AppShell><Outlet/>
+│   ├── GuestRoute.tsx    # sudah login → lempar ke dashboard
 │   └── router.test.tsx
-├── pages/                # 6 placeholder tipis (Login/Register/Dashboard/Quests/Leaderboard/Settings)
+├── pages/                # 6 halaman tipis; Login/Register memasang form-nya, sisanya placeholder
 ├── mocks/
-│   ├── handlers.ts      # GET /healthz + helper errorBody()/errorResponse() untuk reuse
+│   ├── handlers.ts      # /healthz + auth (login/register/me) MSW; helper errorBody/errorResponse + dataResponse ({data} envelope, ADR-025)
 │   └── browser.ts        # setupWorker(...handlers)
 ├── components/
-│   ├── ui/               # 16 komponen shadcn (generated — tak ada logika bisnis di sini)
-│   └── layout/           # kosong (.gitkeep) — AppShell lahir di F1.8
-├── features/{auth,quest,scoring}/  # kerangka folder kosong (.gitkeep)
-├── stores/               # kosong (.gitkeep) — auth.store & ui.store menyusul
+│   ├── ui/               # 16+ komponen shadcn (generated — tak ada logika bisnis di sini)
+│   └── layout/           # AppShell + Sidebar + Topbar — shell SaaS semua route terproteksi (F1.8)
+├── features/
+│   ├── auth/
+│   │   ├── components/   # LoginForm (+ test), RegisterForm
+│   │   ├── queries/      # authKeys, useMe, useLogin, useRegister (satu-satunya pemanggil authApi)
+│   │   ├── schemas/      # loginSchema / registerSchema (zod, cocok validasi backend)
+│   │   └── lib/          # timezones.ts (daftar IANA + default browser)
+│   └── {quest,scoring}/  # kerangka folder kosong (.gitkeep)
+├── stores/
+│   ├── auth.store.ts     # zustand + persist key 'questday-auth' — token & user (client state saja)
+│   └── auth.store.test.ts
 ├── test/setup.ts         # @testing-library/jest-dom/vitest
-├── main.tsx              # enableMocking() → QueryClientProvider → RouterProvider → Devtools(DEV)
+├── main.tsx              # enableMocking() → import '@/lib/session' → QueryClientProvider → RouterProvider → Devtools(DEV)
 ├── index.css             # Tailwind v4 + token tema shadcn (:root + .dark) + Inter
-└── vite-env.d.ts         # tipe VITE_API_BASE_URL, VITE_USE_MOCK
+└── vite-env.d.ts         # tipe VITE_API_BASE_URL, VITE_USE_MOCK, VITE_PORT?
 ```
+
+### Phase 1 selesai — yang berdiri sekarang
+
+- **Route guard bersarang**: `GuestRoute` membungkus `/login` + `/register`
+  (redirect ke dashboard bila sudah punya token); `ProtectedRoute` membungkus
+  sisanya, merender `<AppShell>` + `<Outlet/>` dan menyimpan `state.from` supaya
+  user kembali ke halaman yang tadi dituju setelah login.
+- **`AppShell`** (Sidebar + Topbar) — shell untuk SEMUA halaman terproteksi;
+  halaman berikutnya (Phase 2+) tak menggambar sidebar/topbar sendiri.
+- **`endSession()` (`src/lib/session.ts`)** — satu-satunya jalur teardown sesi,
+  dipakai tombol Logout DAN interceptor 401 di `client.ts`: `logout()` +
+  `queryClient.clear()` (wajib, cegah kebocoran data antar-akun) + redirect ke
+  `PATHS.login`. Modul ini juga mem-wire `setTokenGetter` / `setUnauthorizedHandler`
+  saat di-import `main.tsx`.
+- **MSW auth handlers** (`src/mocks/handlers.ts`) — `POST /auth/login`,
+  `POST /auth/register` (200, bukan 201), `GET /me`, plus jalur gagal
+  (401 `invalid_credential`, 409 `email_taken`). Sukses dibungkus amplop
+  `{ data: <payload> }` lewat helper `dataResponse()` (ADR-025); error tetap
+  `{ error: { code, message } }`.
+- **Persist**: zustand `persist` key **`questday-auth`**, hanya `{token, user}`;
+  refresh browser tetap login.
 
 Config root `apps/frontend/`: `.env.example`, `.gitignore`, `.npmrc`,
 `.oxlintrc.json`, `.prettierrc`, `.prettierignore`, `components.json`,
@@ -160,7 +204,7 @@ Frontend jalan penuh dgn `VITE_USE_MOCK=true` sampai endpoint backend siap.
 
 ## Pesan untuk agent berikutnya (Phase 1)
 
-- **F1.2 `auth.store`**: zustand `persist` **WAJIB** `name: 'questday.auth'` dan
+- **F1.2 `auth.store`**: zustand `persist` **WAJIB** `name: 'questday-auth'` dan
   simpan token di `state.token` — default `tokenGetter` di `client.ts` membaca
   key itu. Setelah store jadi, panggil `setTokenGetter(() => useAuth.getState().token)`
   dan `setUnauthorizedHandler(() => { logout(); redirect ke PATHS.login })` sekali
