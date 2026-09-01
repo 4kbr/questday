@@ -52,7 +52,7 @@ func (h *handler) create(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateQuestRequest
 	if err := httpx.DecodeAndValidate(w, r, &req, h.v); err != nil {
-		httpx.BadRequest(w, err.Error())
+		httpx.ValidationFailed(w, err.Error())
 		return
 	}
 
@@ -108,7 +108,7 @@ func (h *handler) update(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateQuestRequest
 	if err := httpx.DecodeAndValidate(w, r, &req, h.v); err != nil {
-		httpx.BadRequest(w, err.Error())
+		httpx.ValidationFailed(w, err.Error())
 		return
 	}
 

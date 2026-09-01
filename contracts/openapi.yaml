@@ -169,8 +169,6 @@ paths:
                     $ref: '#/components/schemas/ScoreResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/Internal'
 
@@ -194,8 +192,6 @@ paths:
                     $ref: '#/components/schemas/StreakResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/Internal'
 

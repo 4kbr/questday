@@ -25,9 +25,15 @@ func Error(w http.ResponseWriter, status int, code, message string) {
 	JSON(w, status, body)
 }
 
-// BadRequest menulis 400 dengan code "bad_request".
+// BadRequest menulis 400 dengan code "bad_request" (400 non-validasi).
 func BadRequest(w http.ResponseWriter, msg string) {
 	Error(w, http.StatusBadRequest, "bad_request", msg)
+}
+
+// ValidationFailed menulis 400 dengan code "validation_failed" — dipakai saat
+// decode/validasi body gagal. Sesuai enum ErrorResponse di contracts/openapi.yaml.
+func ValidationFailed(w http.ResponseWriter, msg string) {
+	Error(w, http.StatusBadRequest, "validation_failed", msg)
 }
 
 // Unauthorized menulis 401 dengan code "unauthorized".

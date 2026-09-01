@@ -379,6 +379,25 @@ berbarengan.
 `Quest.Points()`. Nilai 5/10/20 sendiri masih di bawah ADR-007 ("bisa
 ditinjau"), bukan ADR baru.
 
+## ADR-027 — CORS lewat `go-chi/cors`, origin dari environment
+
+**Status:** Diterima
+**Konteks:** `apps/frontend` (Vite, origin `http://localhost:5173` saat dev,
+domain lain saat produksi) memanggil API dari browser — lintas origin, jadi
+butuh header CORS. Menulis middleware CORS sendiri gampang salah di preflight
+(`OPTIONS`, `Access-Control-Max-Age`, echo origin). chi tak punya CORS di core.
+**Keputusan:** Tambah dependency `github.com/go-chi/cors` (companion resmi chi,
+kecil). Origin dibaca dari env `CORS_ALLOWED_ORIGINS` (comma-separated) →
+`config.Config.CORSAllowedOrigins`. `buildRouter` memasang `cors.Handler` hanya
+bila daftar origin tak kosong — **default = CORS mati** (tak ada header), aman
+untuk deploy yang belum dikonfigurasi. `AllowCredentials: false` karena token
+dibawa di header `Authorization`, bukan cookie (ADR-020). Metode
+`GET/POST/PATCH/DELETE/OPTIONS`, header `Authorization, Content-Type`.
+**Konsekuensi:** Satu dependency ringan bertambah (dicatat di sini sesuai
+AGENTS.md). Deploy wajib men-set `CORS_ALLOWED_ORIGINS` ke origin frontend,
+kalau tidak browser akan menolak request. `chimw.RealIP` sengaja tetap tak
+dipakai (IP-spoofing, GHSA-3fxj-6jh8-hvhx) — itu keputusan kode, bukan ADR.
+
 ---
 
 <!--

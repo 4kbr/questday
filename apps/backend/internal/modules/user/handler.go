@@ -23,7 +23,7 @@ func newHandler(svc *service, v *validator.Validator) *handler {
 func (h *handler) register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := httpx.DecodeAndValidate(w, r, &req, h.v); err != nil {
-		httpx.BadRequest(w, err.Error())
+		httpx.ValidationFailed(w, err.Error())
 		return
 	}
 
@@ -40,7 +40,7 @@ func (h *handler) register(w http.ResponseWriter, r *http.Request) {
 func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := httpx.DecodeAndValidate(w, r, &req, h.v); err != nil {
-		httpx.BadRequest(w, err.Error())
+		httpx.ValidationFailed(w, err.Error())
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *handler) updateMe(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateProfileRequest
 	if err := httpx.DecodeAndValidate(w, r, &req, h.v); err != nil {
-		httpx.BadRequest(w, err.Error())
+		httpx.ValidationFailed(w, err.Error())
 		return
 	}
 

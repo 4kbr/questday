@@ -7,16 +7,18 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
 // Config adalah seluruh konfigurasi runtime aplikasi.
 type Config struct {
-	Env         string        // development | production
-	HTTPPort    string        // mis. "8080"
-	DatabaseURL string        // DSN Postgres
-	JWTSecret   string        // secret penandatangan token
-	JWTTTL      time.Duration // masa berlaku token
+	Env                string        // development | production
+	HTTPPort           string        // mis. "8080"
+	DatabaseURL        string        // DSN Postgres
+	JWTSecret          string        // secret penandatangan token
+	JWTTTL             time.Duration // masa berlaku token
+	CORSAllowedOrigins []string      // origin yang diizinkan; kosong = CORS mati
 }
 
 // Load membaca env, memberi default yang wajar, lalu memvalidasi nilai wajib.
@@ -43,7 +45,21 @@ func Load() (Config, error) {
 	}
 	cfg.JWTTTL = ttl
 
+	cfg.CORSAllowedOrigins = splitList(getenv("CORS_ALLOWED_ORIGINS", ""))
+
 	return cfg, nil
+}
+
+// splitList memecah string comma-separated jadi slice, membuang spasi & entri
+// kosong. "" -> nil.
+func splitList(raw string) []string {
+	var out []string
+	for part := range strings.SplitSeq(raw, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // getenv mengembalikan nilai env key, atau def kalau kosong / tidak ada.
