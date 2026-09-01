@@ -126,18 +126,18 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 
 | | ID | Task |
 |---|---|---|
-| [ ] | F0.1 | Scaffold Vite + React + TypeScript |
-| [ ] | F0.2 | Tailwind CSS + path alias `@/` |
-| [ ] | F0.3 | shadcn/ui init + token tema SaaS |
-| [ ] | F0.4 | `gen:api` — generate `schema.gen.ts` dari kontrak |
-| [ ] | F0.5 | `apis/types.ts` — alias type ramah |
-| [ ] | F0.6 | `apis/client.ts` — axios + interceptor |
-| [ ] | F0.7 | `lib/query-client.ts` + provider |
-| [ ] | F0.8 | Struktur folder + `routes/` kerangka |
-| [ ] | F0.9 | MSW setup + handler dasar |
-| [ ] | F0.10 | `.env.example`, `.gitignore`, ESLint + Prettier |
-| [ ] | F0.11 | Script `package.json` + README frontend |
-| [ ] | F0.12 | Test phase 0 (Vitest + Testing Library) |
+| [x] | F0.1 | Scaffold Vite + React + TypeScript |
+| [x] | F0.2 | Tailwind CSS + path alias `@/` |
+| [x] | F0.3 | shadcn/ui init + token tema SaaS |
+| [x] | F0.4 | `gen:api` — generate `schema.gen.ts` dari kontrak |
+| [x] | F0.5 | `apis/types.ts` — alias type ramah |
+| [x] | F0.6 | `apis/client.ts` — axios + interceptor |
+| [x] | F0.7 | `lib/query-client.ts` + provider |
+| [x] | F0.8 | Struktur folder + `routes/` kerangka |
+| [x] | F0.9 | MSW setup + handler dasar |
+| [x] | F0.10 | `.env.example`, `.gitignore`, oxlint + Prettier |
+| [x] | F0.11 | Script `package.json` + README frontend |
+| [x] | F0.12 | Test phase 0 (Vitest + Testing Library) |
 
 ### Phase 1 — Auth & shell → [phase-01-auth.md](phase-01-auth.md)
 
