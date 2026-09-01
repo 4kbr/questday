@@ -281,6 +281,27 @@ saat startup — urutan registrasi tak penting karena kunci adalah sentinel
 error. Registrasi yang lupa → error jatuh ke 500, ketahuan saat test. T4.5
 tinggal memverifikasi kelengkapan, bukan merancang ulang.
 
+## ADR-024 — Root `Makefile` sebagai pintu perintah; `.env.docker` terpisah dari `.env` app
+**Status:** Diterima
+**Konteks:** Menjalankan infra dev hanya bisa lewat
+`docker compose -f docker-compose.dev.yml ...` yang panjang, dan kredensial
+Postgres di-hardcode di compose. Root belum punya `Makefile`; tiap perintah dev
+harus diingat manual.
+**Keputusan:** Tambah `Makefile` di root sebagai wrapper tipis: target
+`up/down/reset/logs/ps/psql` untuk `docker compose` dev, plus `backend`/`frontend`
+/`dev` yang mendelegasi ke app masing-masing (`make -C apps/backend dev`,
+`npm run dev`). Kredensial infra pindah ke `.env.docker` (di-`--env-file` oleh
+Makefile, template `.env.docker.example`), **terpisah** dari `.env` milik
+`apps/backend`. `docker-compose.dev.yml` memakai substitusi ber-default
+(`${POSTGRES_USER:-questday}`) supaya tetap jalan tanpa `.env.docker`. Cakupan
+tetap **infra saja** — app tidak dijalankan di container (ADR-003 & model
+`make dev` + air tak berubah).
+**Konsekuensi:** Dua file env dengan peran beda (`.env` = config app,
+`.env.docker` = kredensial container Postgres) — harus dijaga sinkron dengan
+`DATABASE_URL`. Root `.gitignore` perlu `!.env.docker.example` karena pola
+`.env.*` ikut meng-ignore-nya. Kalau nanti app ikut masuk container, itu
+keputusan baru (ADR yang men-supersede sebagian ini).
+
 ---
 
 <!--

@@ -2,9 +2,11 @@
 # Hanya dependency eksternal (database, dll). App-nya sendiri dijalankan via
 # `make dev` di apps/backend supaya hot-reload (air) enak dipakai.
 #
-# Jalankan:  docker compose -f docker-compose.dev.yml up -d
-# Matikan:   docker compose -f docker-compose.dev.yml down
-# Reset DB:  docker compose -f docker-compose.dev.yml down -v
+# Cara mudah (root Makefile):  make up / make down / make reset
+# Manual:                      docker compose -f docker-compose.dev.yml up -d
+#
+# Nilai di bawah bisa di-override lewat .env.docker (`make env-docker` untuk buat
+# dari template). Tanpa .env.docker, default `questday` tetap dipakai.
 
 services:
   postgres:
@@ -12,15 +14,15 @@ services:
     container_name: questday_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: questday
-      POSTGRES_PASSWORD: questday
-      POSTGRES_DB: questday
+      POSTGRES_USER: ${POSTGRES_USER:-questday}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-questday}
+      POSTGRES_DB: ${POSTGRES_DB:-questday}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - questday_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U questday -d questday"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-questday} -d ${POSTGRES_DB:-questday}"]
       interval: 5s
       timeout: 3s
       retries: 10

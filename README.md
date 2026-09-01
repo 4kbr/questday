@@ -26,12 +26,16 @@ Lihat `docs/GUIDES.md` bagian "Memulai project dari nol".
 Ringkas:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d   # nyalakan Postgres
+make up                                           # nyalakan Postgres (docker compose dev)
 cd apps/backend
 cp .env.example .env                              # isi kredensial
 make migrate-up                                   # jalankan migrasi
 make dev                                          # jalankan server + hot reload (air)
 ```
+
+Dari root: `make help` untuk daftar pintasan (`up` / `down` / `reset` / `logs` /
+`psql`, plus `backend` / `frontend` / `dev`). Infra dev dikonfigurasi lewat
+`.env.docker` — `make env-docker` untuk buat dari template.
 
 ## Dokumentasi
 

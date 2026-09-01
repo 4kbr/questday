@@ -150,8 +150,9 @@ sering menggigit:
 ## Cara memulai (setelah Phase 0 dikerjakan)
 
 ```bash
-# Infra
-docker compose -f docker-compose.dev.yml up -d      # Postgres
+# Infra (dari root; lihat `make help` untuk pintasan lain)
+make env-docker                                    # buat .env.docker dari template
+make up                                            # Postgres via docker compose dev
 
 # Backend
 cd apps/backend
@@ -165,6 +166,10 @@ npm install && cp .env.example .env
 npm run gen:api                                     # type dari contracts/
 npm run dev                                         # :5173
 ```
+
+Root `Makefile` juga punya `make backend` / `make frontend` / `make dev` (dua-
+duanya paralel). Infra dev dikonfigurasi lewat `.env.docker` (tidak di-commit);
+`docker-compose.dev.yml` tetap jalan tanpa file itu memakai default `questday`.
 
 Belum bisa dijalankan sekarang — `make build` akan gagal karena belum ada kode.
 
