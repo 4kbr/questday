@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
+import { Toaster } from '@/components/ui/sonner'
 
 /**
  * Shell SaaS untuk SEMUA halaman terproteksi (F1.8). Halaman berikutnya tak
@@ -17,6 +18,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Topbar />
         <main className="p-6">{children}</main>
       </div>
+      {/* Satu-satunya mount Toaster untuk semua halaman terproteksi (F2.Pre). */}
+      <Toaster position="bottom-right" richColors />
     </div>
   )
 }

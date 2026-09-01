@@ -300,6 +300,8 @@ export interface components {
             /** @enum {string} */
             difficulty: "easy" | "medium" | "hard";
             recurrence: string;
+            /** @description Poin yang diberikan saat quest ini diselesaikan, hasil Quest.Points() (turunan difficulty, ADR-007/ADR-026). Read-only. */
+            points: number;
             active: boolean;
             /** Format: date-time */
             created_at: string;

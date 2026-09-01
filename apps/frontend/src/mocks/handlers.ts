@@ -2,7 +2,12 @@ import { http, HttpResponse } from 'msw'
 import type {
   ApiErrorBody,
   AuthResponse,
+  CreateQuestRequest,
   HealthResponse,
+  Quest,
+  QuestLog,
+  TodayQuests,
+  UpdateQuestRequest,
   User,
 } from '@/apis/types'
 
@@ -63,6 +68,80 @@ type RegisterBody = {
   timezone?: string
 }
 
+// --- Fake in-memory store quest (F2.11) -------------------------------------
+//
+// Mock WAJIB stateful: complete/uncomplete harus benar-benar mengubah
+// `GET /quests/today`, kalau tidak optimistic update (F2.6) tak pernah teruji.
+
+/** Poin per difficulty — satu sumber, cocok dengan `Quest.Points()` backend. */
+const POINTS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 20 } as const
+
+const seedNow = new Date().toISOString()
+
+/** 3 quest ter-seed, semua aktif, milik `seededUser`. Uuid tetap. */
+const quests: Quest[] = [
+  {
+    id: '10000000-0000-4000-8000-000000000001',
+    user_id: seededUser.id,
+    title: 'Baca 10 halaman buku',
+    note: 'Buku non-fiksi',
+    category: 'Belajar',
+    difficulty: 'easy',
+    recurrence: 'daily',
+    points: POINTS_BY_DIFFICULTY.easy,
+    active: true,
+    created_at: seedNow,
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000002',
+    user_id: seededUser.id,
+    title: 'Olahraga 30 menit',
+    category: 'Kesehatan',
+    difficulty: 'medium',
+    recurrence: 'daily',
+    points: POINTS_BY_DIFFICULTY.medium,
+    active: true,
+    created_at: seedNow,
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000003',
+    user_id: seededUser.id,
+    title: 'Tulis jurnal harian',
+    category: 'Refleksi',
+    difficulty: 'hard',
+    recurrence: 'daily',
+    points: POINTS_BY_DIFFICULTY.hard,
+    active: true,
+    created_at: seedNow,
+  },
+]
+
+/** Set id quest yang selesai "hari ini" (MVP: hanya hari ini). */
+const todayCompleted = new Set<string>()
+
+/** Tanggal "hari ini" versi mock — boleh pakai jam asli, ini fake backend. */
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** Bangun `QuestLog` untuk quest yang baru diselesaikan. */
+function buildLog(q: Quest): QuestLog {
+  return {
+    id: crypto.randomUUID(),
+    quest_id: q.id,
+    user_id: seededUser.id,
+    date: todayISO(),
+    status: 'completed',
+    points_awarded: POINTS_BY_DIFFICULTY[q.difficulty],
+    completed_at: new Date().toISOString(),
+  }
+}
+
+/** Cari quest aktif berdasar id. */
+function findActiveQuest(id: string): Quest | undefined {
+  return quests.find((q) => q.id === id && q.active)
+}
+
 export const handlers = [
   http.get(`${BASE}/healthz`, () =>
     HttpResponse.json({ status: 'ok' } satisfies HealthResponse),
@@ -101,5 +180,114 @@ export const handlers = [
       return dataResponse<User>(seededUser, 200)
     }
     return errorResponse(401, 'invalid_credential', 'Token tidak valid')
+  }),
+
+  // --- Quest (F2.11) -------------------------------------------------------
+  // `/quests/today` WAJIB terdaftar SEBELUM `/quests/:questId` supaya "today"
+  // tidak tertangkap sebagai id.
+
+  http.get(`${BASE}/quests`, () =>
+    dataResponse<Quest[]>(quests.filter((q) => q.active)),
+  ),
+
+  http.get(`${BASE}/quests/today`, () =>
+    dataResponse<TodayQuests>({
+      date: todayISO(),
+      items: quests
+        .filter((q) => q.active)
+        .map((q) => ({ quest: q, completed: todayCompleted.has(q.id) })),
+    }),
+  ),
+
+  http.post(`${BASE}/quests`, async ({ request }) => {
+    const body = (await request
+      .json()
+      .catch(() => ({}))) as Partial<CreateQuestRequest>
+    if (!body.title || !body.category || !body.difficulty) {
+      return errorResponse(
+        400,
+        'validation_failed',
+        'title, category, dan difficulty wajib diisi',
+      )
+    }
+    const quest: Quest = {
+      id: crypto.randomUUID(),
+      user_id: seededUser.id,
+      title: body.title,
+      note: body.note,
+      category: body.category,
+      difficulty: body.difficulty,
+      recurrence: 'daily',
+      points: POINTS_BY_DIFFICULTY[body.difficulty],
+      active: true,
+      created_at: new Date().toISOString(),
+    }
+    quests.push(quest)
+    return dataResponse<Quest>(quest, 200)
+  }),
+
+  http.patch(`${BASE}/quests/:questId`, async ({ request, params }) => {
+    const id = String(params.questId)
+    const quest = findActiveQuest(id)
+    if (!quest) {
+      return errorResponse(404, 'quest_not_found', 'Quest tidak ditemukan')
+    }
+    const body = (await request
+      .json()
+      .catch(() => ({}))) as Partial<UpdateQuestRequest>
+    if (body.title !== undefined) quest.title = body.title
+    if (body.note !== undefined) quest.note = body.note
+    if (body.category !== undefined) quest.category = body.category
+    if (body.difficulty !== undefined) {
+      quest.difficulty = body.difficulty
+      quest.points = POINTS_BY_DIFFICULTY[body.difficulty]
+    }
+    if (body.active !== undefined) quest.active = body.active
+    return dataResponse<Quest>(quest)
+  }),
+
+  http.delete(`${BASE}/quests/:questId`, ({ params }) => {
+    const id = String(params.questId)
+    const quest = quests.find((q) => q.id === id)
+    if (!quest) {
+      return errorResponse(404, 'quest_not_found', 'Quest tidak ditemukan')
+    }
+    quest.active = false
+    todayCompleted.delete(id)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post(`${BASE}/quests/:questId/complete`, ({ params }) => {
+    const id = String(params.questId)
+    const quest = findActiveQuest(id)
+    if (!quest) {
+      return errorResponse(404, 'quest_not_found', 'Quest tidak ditemukan')
+    }
+    if (todayCompleted.has(id)) {
+      return errorResponse(
+        409,
+        'already_completed',
+        'Quest sudah diselesaikan hari ini',
+      )
+    }
+    todayCompleted.add(id)
+    return dataResponse<QuestLog>(buildLog(quest), 200)
+  }),
+
+  http.post(`${BASE}/quests/:questId/uncomplete`, ({ params }) => {
+    const id = String(params.questId)
+    const quest = findActiveQuest(id)
+    if (!quest) {
+      return errorResponse(404, 'quest_not_found', 'Quest tidak ditemukan')
+    }
+    if (!todayCompleted.has(id)) {
+      return errorResponse(
+        409,
+        'not_completed',
+        'Quest belum diselesaikan hari ini',
+      )
+    }
+    todayCompleted.delete(id)
+    return new HttpResponse(null, { status: 204 })
   }),
 ]

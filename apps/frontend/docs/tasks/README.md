@@ -159,18 +159,18 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 
 | | ID | Task |
 |---|---|---|
-| [ ] | F2.1 | `apis/quest.api.ts` (7 fungsi) |
-| [ ] | F2.2 | `questKeys` — query key terpusat |
-| [ ] | F2.3 | `features/quest/queries` — 7 hook |
-| [ ] | F2.4 | `features/quest/schemas` — zod create/update |
-| [ ] | F2.5 | `QuestItem` — baris quest + checkbox complete |
-| [ ] | F2.6 | Optimistic update complete/uncomplete + rollback |
-| [ ] | F2.7 | Halaman Dashboard — quest hari ini |
-| [ ] | F2.8 | `QuestFormDialog` — create & edit |
-| [ ] | F2.9 | Halaman Quests — daftar + arsip |
-| [ ] | F2.10 | Empty / loading / error state |
-| [ ] | F2.11 | MSW handler quest |
-| [ ] | F2.12 | Test phase 2 |
+| [x] | F2.1 | `apis/quest.api.ts` (7 fungsi) |
+| [x] | F2.2 | `questKeys` — query key terpusat |
+| [x] | F2.3 | `features/quest/queries` — 7 hook |
+| [x] | F2.4 | `features/quest/schemas` — zod create/update |
+| [x] | F2.5 | `QuestItem` — baris quest + checkbox complete |
+| [x] | F2.6 | Optimistic update complete/uncomplete + rollback |
+| [x] | F2.7 | Halaman Dashboard — quest hari ini |
+| [x] | F2.8 | `QuestFormDialog` — create & edit |
+| [x] | F2.9 | Halaman Quests — daftar + arsip |
+| [x] | F2.10 | Empty / loading / error state |
+| [x] | F2.11 | MSW handler quest |
+| [x] | F2.12 | Test phase 2 |
 
 ### Phase 3 — Scoring → [phase-03-scoring.md](phase-03-scoring.md)
 

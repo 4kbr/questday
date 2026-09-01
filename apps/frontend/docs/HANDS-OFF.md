@@ -9,17 +9,19 @@ Dokumen orientasi cepat khusus **frontend**. Untuk state seluruh proyek lihat
 
 ## TL;DR
 
-**Phase 0 (Setup & fondasi) + Phase 1 (Auth & shell) SELESAI & terverifikasi.**
-Pondasi (Vite + tema + lapisan API + router + MSW + test) berdiri, dan di
-atasnya kini ada sesi auth penuh: register/login/logout, rute terlindungi,
-shell SaaS (sidebar + topbar).
+**Phase 0 (Setup & fondasi) + Phase 1 (Auth & shell) + Phase 2 (Quest) SELESAI
+& terverifikasi.** Pondasi (Vite + tema + lapisan API + router + MSW + test)
+berdiri, di atasnya sesi auth penuh (register/login/logout, rute terlindungi,
+shell SaaS), dan kini inti aplikasi: dashboard quest hari ini dengan
+centang optimistik + rollback, CRUD definisi quest (create/edit/arsip), serta
+MSW quest handler stateful sehingga alur penuh jalan tanpa backend.
 
 **Belum di-commit.** Semua file `apps/frontend/*` masih untracked/termodifikasi.
 `docs/tasks/`, `contracts/`, `AGENTS.md`, root `docs/` tak tersentuh (selain
 dokumen ini + `docs/tasks/README.md` untuk papan progres).
 
-**Mulai dari sini:** `apps/frontend/docs/tasks/phase-02-quest.md`, kerjakan
-**F2.1** dst berurutan.
+**Mulai dari sini:** `apps/frontend/docs/tasks/phase-03-scoring.md`, kerjakan
+**F3.1** dst berurutan.
 
 ---
 
@@ -29,7 +31,7 @@ dokumen ini + `docs/tasks/README.md` untuk papan progres).
 |---|---|---|
 | 0 — Setup & fondasi | `docs/tasks/phase-00-setup.md` | ✅ **selesai** (F0.1–F0.12) |
 | 1 — Auth & shell | `docs/tasks/phase-01-auth.md` | ✅ **selesai** (F1.1–F1.11) |
-| 2 — Quest | `docs/tasks/phase-02-quest.md` | ⬜ belum mulai |
+| 2 — Quest | `docs/tasks/phase-02-quest.md` | ✅ **selesai** (F2.1–F2.12) |
 | 3 — Scoring | `docs/tasks/phase-03-scoring.md` | ⬜ belum mulai |
 | 4 — Settings & polish | `docs/tasks/phase-04-polish.md` | ⬜ belum mulai |
 
@@ -117,20 +119,28 @@ src/
 │   ├── ProtectedRoute.tsx / ProtectedRoute.test.tsx  # tanpa token → /login (state.from); ada token → <AppShell><Outlet/>
 │   ├── GuestRoute.tsx    # sudah login → lempar ke dashboard
 │   └── router.test.tsx
-├── pages/                # 6 halaman tipis; Login/Register memasang form-nya, sisanya placeholder
+├── pages/                # 6 halaman tipis; Login/Register + Dashboard/Quests nyata (F2.7/F2.9), sisanya placeholder
+├── apis/
+│   └── quest.api.ts      # list/today/create/update/archive/complete/uncomplete — murni HTTP (F2.1)
 ├── mocks/
-│   ├── handlers.ts      # /healthz + auth (login/register/me) MSW; helper errorBody/errorResponse + dataResponse ({data} envelope, ADR-025)
+│   ├── handlers.ts      # /healthz + auth + QUEST stateful (7 handler, store in-memory, jalur 404/409) MSW; helper errorBody/errorResponse + dataResponse ({data} envelope, ADR-025)
 │   └── browser.ts        # setupWorker(...handlers)
 ├── components/
-│   ├── ui/               # 16+ komponen shadcn (generated — tak ada logika bisnis di sini)
-│   └── layout/           # AppShell + Sidebar + Topbar — shell SaaS semua route terproteksi (F1.8)
+│   ├── ui/               # 18+ komponen shadcn (generated) — termasuk progress + alert-dialog (F2)
+│   ├── EmptyState.tsx    # ikon + judul + deskripsi + aksi — dipakai dashboard/quests kosong (F2.10)
+│   └── layout/           # AppShell (+ <Toaster/> sonner) + Sidebar + Topbar — shell SaaS semua route terproteksi (F1.8)
 ├── features/
 │   ├── auth/
 │   │   ├── components/   # LoginForm (+ test), RegisterForm
 │   │   ├── queries/      # authKeys, useMe, useLogin, useRegister (satu-satunya pemanggil authApi)
 │   │   ├── schemas/      # loginSchema / registerSchema (zod, cocok validasi backend)
 │   │   └── lib/          # timezones.ts (daftar IANA + default browser)
-│   └── {quest,scoring}/  # kerangka folder kosong (.gitkeep)
+│   ├── quest/
+│   │   ├── components/   # QuestItem (+ test), TodayQuestList, QuestFormDialog (+ test), QuestTable
+│   │   ├── queries/      # questKeys (keys.ts) + 7 hook (+ test); complete/uncomplete optimistik di questKeys.today(); isBenignQuestToggleError
+│   │   ├── schemas/      # questFormSchema / QuestFormValues (zod)
+│   │   └── lib/          # difficulty.ts (warna + label badge easy/medium/hard)
+│   └── scoring/          # kerangka folder kosong (.gitkeep)
 ├── stores/
 │   ├── auth.store.ts     # zustand + persist key 'questday-auth' — token & user (client state saja)
 │   └── auth.store.test.ts
@@ -160,6 +170,33 @@ src/
   `{ error: { code, message } }`.
 - **Persist**: zustand `persist` key **`questday-auth`**, hanya `{token, user}`;
   refresh browser tetap login.
+
+### Phase 2 selesai — yang berdiri sekarang
+
+- **MSW quest handler stateful** (`src/mocks/handlers.ts`) — 7 endpoint quest di
+  atas store in-memory (`quests[]` + `todayCompleted` Set), sukses ber-amplop
+  `{ data }` (`dataResponse`), error `{ error:{code,message} }` (`errorResponse`),
+  204 = `new HttpResponse(null,{status:204})`. `/quests/today` didaftar SEBELUM
+  `/quests/:questId`. Jalur gagal: `quest_not_found` (404), `already_completed` /
+  `not_completed` (409), `validation_failed` (400). Poin turun dari difficulty
+  (easy 5 / medium 10 / hard 20). Complete/uncomplete benar-benar mengubah
+  `GET /quests/today` → optimistic update teruji sungguhan.
+- **Optimistic complete/uncomplete + rollback** di `features/quest/queries`:
+  `onMutate` menulis `questKeys.today()` setelah `cancelQueries`, `onError`
+  mengembalikan `ctx.prev`, `onSettled` `invalidateQueries`. Kode 409
+  (`already_completed` / `not_completed`) TIDAK dianggap error merah — caller
+  menyaring lewat `isBenignQuestToggleError(err)` (baca `ApiError.code`).
+- **`questKeys` (`features/quest/queries/keys.ts`)** satu-satunya sumber query
+  key quest — dilarang menulis `['quests', ...]` di file lain.
+- **`// TODO(F3.6): invalidate scoring`** masih terbuka di `quest.queries.ts`
+  (`useCompleteQuest` / `useUncompleteQuest`) — dikerjakan setelah `scoringKeys`
+  ada di Phase 3.
+- **Tanggal dashboard** diambil dari `TodayQuestsResponse.date` (backend hitung
+  dari timezone user, ADR-006), bukan `new Date()` browser.
+- **Test**: `QuestItem.test.tsx`, `QuestFormDialog.test.tsx` (seam-mock hook),
+  `quest.queries.test.tsx` (`msw/node` `setupServer` + `queryClient` singleton).
+  Setup test menambah polyfill `window.matchMedia` (jsdom) untuk komponen yang
+  menyentuh shell / sonner.
 
 Config root `apps/frontend/`: `.env.example`, `.gitignore`, `.npmrc`,
 `.oxlintrc.json`, `.prettierrc`, `.prettierignore`, `components.json`,
