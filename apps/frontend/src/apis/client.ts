@@ -29,13 +29,14 @@ export const api = axios.create({
  * Akses token bisa disuntik supaya `stores/auth.store` (F1.2) bisa mem-wire
  * tanpa circular import. Default: baca langsung dari localStorage.
  *
- * PENTING untuk F1.2: zustand `persist` WAJIB memakai `name: 'questday.auth'`
- * agar key di bawah ini cocok, dan token disimpan di `state.token`.
+ * PENTING untuk F1.2: zustand `persist` WAJIB memakai `name: 'questday-auth'`
+ * agar key di bawah ini cocok, dan token disimpan di `state.token`. F1.2 akan
+ * mengganti default ini supaya membaca langsung dari store.
  */
 let tokenGetter: () => string | null = () => {
   try {
     return (
-      JSON.parse(localStorage.getItem('questday.auth') ?? 'null')?.state
+      JSON.parse(localStorage.getItem('questday-auth') ?? 'null')?.state
         ?.token ?? null
     )
   } catch {
@@ -63,9 +64,16 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 })
 
 api.interceptors.response.use(
-  // Sukses: response mentah, TANPA unwrap. Kontrak = sumber kebenaran, dan
-  // sukses adalah objek RAW (tidak ada envelope `{data:...}`).
-  (response) => response,
+  (response) => {
+    // ADR-025: sukses selalu ber-amplop {"data": <payload>}. Unwrap sekali di
+    // sini supaya *.api.ts & komponen memakai res.data = payload langsung.
+    // /healthz & response tak ber-amplop dibiarkan apa adanya.
+    const body = response.data
+    if (body && typeof body === 'object' && 'data' in body) {
+      response.data = (body as { data: unknown }).data
+    }
+    return response
+  },
   (error: AxiosError<{ error?: { code?: string; message?: string } }>) => {
     if (!error.response) {
       // Network error / tak ada response.

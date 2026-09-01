@@ -443,7 +443,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthResponse"];
+                    "application/json": {
+                        data: components["schemas"]["AuthResponse"];
+                    };
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -470,7 +472,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthResponse"];
+                    "application/json": {
+                        data: components["schemas"]["AuthResponse"];
+                    };
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -493,7 +497,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponse"];
+                    "application/json": {
+                        data: components["schemas"]["UserResponse"];
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -520,7 +526,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthResponse"];
+                    "application/json": {
+                        data: components["schemas"]["AuthResponse"];
+                    };
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -544,7 +552,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScoreResponse"];
+                    "application/json": {
+                        data: components["schemas"]["ScoreResponse"];
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -567,7 +577,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StreakResponse"];
+                    "application/json": {
+                        data: components["schemas"]["StreakResponse"];
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -590,7 +602,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuestResponse"][];
+                    "application/json": {
+                        data: components["schemas"]["QuestResponse"][];
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -616,7 +630,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuestResponse"];
+                    "application/json": {
+                        data: components["schemas"]["QuestResponse"];
+                    };
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -640,7 +656,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TodayQuestsResponse"];
+                    "application/json": {
+                        data: components["schemas"]["TodayQuestsResponse"];
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -693,7 +711,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuestResponse"];
+                    "application/json": {
+                        data: components["schemas"]["QuestResponse"];
+                    };
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -724,7 +744,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuestLogResponse"];
+                    "application/json": {
+                        data: components["schemas"]["QuestLogResponse"];
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -776,7 +798,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LeaderboardEntry"][];
+                    "application/json": {
+                        data: components["schemas"]["LeaderboardEntry"][];
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -38,14 +38,21 @@ MSW **tak pernah ikut ke production build** — `enableMocking()` di `src/main.t
 langsung `return` kalau flag ≠ `'true'`, dan bundler membuang dynamic-import
 `@/mocks/browser` (tidak ada jejak `msw` di `dist/assets`).
 
-## Catatan envelope (deviasi dari draft task)
+## Catatan envelope
 
-Kontrak = sumber kebenaran. Response **sukses dikembalikan RAW** — `api.get(...)`
-memberi `res.data` = objek sesuai schema, **tanpa** unwrap `{ data: ... }`.
-Hanya **error** yang ber-amplop: `{"error":{code,message}}` → diubah jadi
-`ApiError` (`status`, `code`, `message`) di `src/apis/client.ts`. Fitur
-membedakan perlakuan lewat `ApiError.code` (mis. `already_completed`), jangan
-mencocokkan string pesan.
+Per **ADR-025**, setiap response **sukses** berbadan JSON dibungkus
+`{"data": <payload>}`, dan **`src/apis/client.ts` meng-unwrap-nya secara
+terpusat** di interceptor response. Jadi `api.get(...)` / `*.api.ts` selalu
+melihat `res.data` = payload langsung sesuai schema, tanpa perlu menyentuh
+amplop. `register` mengembalikan **200** (bukan 201).
+
+**Error** tetap ber-amplop `{"error":{code,message}}` → dipetakan jadi `ApiError`
+(`status`, `code`, `message`) di `src/apis/client.ts`. Fitur membedakan perlakuan
+lewat `ApiError.code` (mis. `already_completed`), jangan mencocokkan string
+pesan.
+
+`/healthz` **di luar amplop** — response polos (`{status:'ok'}`) dibiarkan apa
+adanya oleh interceptor (tak ada key `data` → passthrough).
 
 `src/apis/client.ts` adalah **satu-satunya** tempat membuat instance HTTP.
 Halaman & komponen tak pernah memanggil `axios`/`fetch` langsung — selalu lewat

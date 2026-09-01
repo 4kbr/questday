@@ -6,13 +6,16 @@ import { queryClient } from '@/lib/query-client'
 import { router } from '@/routes'
 
 describe('app router', () => {
-  it('mounts without throwing and renders the dashboard placeholder at "/"', async () => {
+  it('mounts without throwing and redirects "/" to the login page when unauthenticated', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>,
     )
 
-    expect(await screen.findByText('Dashboard')).toBeInTheDocument()
+    // Tanpa token, ProtectedRoute (F1.7) melempar "/" ke /login.
+    expect(
+      await screen.findByRole('button', { name: 'Masuk' }),
+    ).toBeInTheDocument()
   })
 })

@@ -40,11 +40,18 @@ describe('apis/client', () => {
     })
   })
 
-  it('returns raw success bodies without unwrapping a {data} envelope', async () => {
-    mock.onGet('/x').reply(200, { id: '1', title: 'x' })
+  it('unwraps a {data} envelope on success (ADR-025)', async () => {
+    mock.onGet('/x').reply(200, { data: { id: '1', title: 'x' } })
 
     const res = await api.get('/x')
     expect(res.data).toEqual({ id: '1', title: 'x' })
+  })
+
+  it('passes through un-enveloped success bodies (e.g. /healthz)', async () => {
+    mock.onGet('/x').reply(200, { status: 'ok' })
+
+    const res = await api.get('/x')
+    expect(res.data).toEqual({ status: 'ok' })
   })
 
   it('attaches Authorization: Bearer <token> from the injected token getter', async () => {
