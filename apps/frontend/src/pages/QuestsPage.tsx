@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toastApiError, toastSuccess } from '@/lib/toast'
 // Path relatif: oxlint `no-restricted-imports` memblokir alias fitur.
 import { QuestFormDialog } from '../features/quest/components/QuestFormDialog'
 import { QuestTable } from '../features/quest/components/QuestTable'
@@ -64,7 +65,13 @@ export default function QuestsPage() {
 
   function confirmArchive() {
     if (!archiving) return
-    archive.mutate(archiving.id, { onSuccess: () => setArchiving(null) })
+    archive.mutate(archiving.id, {
+      onSuccess: () => {
+        toastSuccess('Quest diarsipkan')
+        setArchiving(null)
+      },
+      onError: (err) => toastApiError(err),
+    })
   }
 
   return (

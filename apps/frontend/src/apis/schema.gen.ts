@@ -358,7 +358,7 @@ export interface components {
             display_name: string;
             points: number;
         };
-        /** @description Amplop error konsisten dengan platform/httpx. Serialisasi: {"error":{"code":"...","message":"..."}}. Nilai `error.code` yang dipakai: email_taken, invalid_credential, user_not_found, quest_not_found, already_completed, not_completed, validation_failed, internal_error. */
+        /** @description Amplop error konsisten dengan platform/httpx. Serialisasi: {"error":{"code":"...","message":"..."}}. Nilai `error.code` yang dipakai: email_taken, invalid_credential, unauthorized, user_not_found, quest_not_found, already_completed, not_completed, validation_failed, internal_error. Catatan: `unauthorized` dipakai oleh middleware auth untuk 401 (token hilang / tidak valid / kedaluwarsa); `invalid_credential` khusus untuk login dengan email/password salah. */
         ErrorResponse: {
             error: {
                 code: string;

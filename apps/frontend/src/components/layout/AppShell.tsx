@@ -5,8 +5,9 @@ import { Toaster } from '@/components/ui/sonner'
 
 /**
  * Shell SaaS untuk SEMUA halaman terproteksi (F1.8). Halaman berikutnya tak
- * boleh menggambar sidebar/topbar sendiri. Responsive = F4.7; sekarang cukup
- * benar di desktop.
+ * boleh menggambar sidebar/topbar sendiri. Responsive (F4.7): di bawah `md`
+ * `Sidebar` disembunyikan (drawer lewat hamburger di `Topbar`) sehingga kolom
+ * utama otomatis full-width; padding `main` mengecil di mobile.
  *
  * `children` di sini adalah `<Outlet/>` dari `ProtectedRoute`.
  */
@@ -16,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
-        <main className="p-6">{children}</main>
+        <main className="p-4 md:p-6">{children}</main>
       </div>
       {/* Satu-satunya mount Toaster untuk semua halaman terproteksi (F2.Pre). */}
       <Toaster position="bottom-right" richColors />

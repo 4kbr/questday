@@ -70,7 +70,7 @@ rasio tampilan `xp / (xp + points_to_next_level)`.
   (entries dengan `rank` tak urut → baris pertama tetap rank 2); `display_name`
   kosong → "Pengguna dihapus".
 
-**Total test: 30 (11 file), semua hijau.**
+**Total test: 30 (11 file) → 39 (15 file) setelah Phase 4 Batch 4, semua hijau.**
 
 ### Phase 3 selesai — catatan lintas-batch
 
@@ -88,8 +88,169 @@ rasio tampilan `xp / (xp + points_to_next_level)`.
 - **Sorotan baris sendiri di leaderboard** via `useAuthStore((s) => s.user?.id)`
   di `LeaderboardPage`, diteruskan sebagai `currentUserId` ke `LeaderboardTable`.
 
-**Mulai dari sini:** `apps/frontend/docs/tasks/phase-04-polish.md` **F4.1**
-(`updateMe` + `useUpdateProfile` — butuh backend T1.11).
+**Phase 4 Batch 1 (F4.1–F4.3) SELESAI** —
+- **F4.1**: `authApi.updateMe(body) → api.patch<AuthResponse>('/me', body)`.
+  `features/auth/queries/profile.queries.ts` baru: `useUpdateProfile()` —
+  `onSuccess({token,user})` → `useAuthStore.getState().setSession(token,user)`
+  (token BARU, ADR-022/013) lalu invalidate `authKeys.me()` + `questKeys.today()`
+  + `scoringKeys.all()`. `scoringKeys`/`questKeys` di-import via path relatif
+  (`../../quest/queries/keys`, `../../scoring/queries/keys`) — konstanta key saja.
+- **F4.2**: `timezones.ts` DIPINDAH `features/auth/lib/` → `src/lib/timezones.ts`
+  (lintas-fitur; `RegisterForm` sekarang `import { browserTimezone } from
+  '@/lib/timezones'`). `src/components/TimezoneSelect.tsx` baru — combobox
+  `Popover`+`Command` (shadcn `command`/`popover`/`sheet` ditambah via CLI;
+  `textarea`+`input-group` ikut sebagai dep, `button`/`input`/`dialog`
+  di-refresh). Daftar zona dari `Intl.supportedValuesOf('timeZone')`, fallback
+  `COMMON_TIMEZONES`. `features/auth/components/ProfileForm.tsx` baru (RHF +
+  `profileSchema`), `pages/SettingsPage.tsx` nyata (Card "Profil"). `RegisterForm`
+  field timezone kini pakai `<TimezoneSelect>` (import `Select*` + `timezoneOptions`
+  dihapus).
+- **F4.2 schema**: `auth.schema.ts` tambah `profileSchema`
+  (`display_name` min 1, `timezone` min 1), `ProfileValues`, `_ProfileSyncCheck`
+  (resolve → `true` vs `UpdateProfileRequest`).
+- **F4.3**: tercakup di `useUpdateProfile().onSuccess` (setSession token baru +
+  invalidate). Mock `PATCH ${BASE}/me` di `handlers.ts` (dekat `GET /me`) —
+  mutasi `seededUser.display_name`/`.timezone`, balas `{token: MOCK_TOKEN, user:
+  seededUser}`.
+- Gate hijau: typecheck / lint (0 error) / test (30, tak nambah) / build /
+  format:check. `grep @/features/` & `grep 'quests'|'scoring'` (di luar keys.ts)
+  kosong.
+
+**Phase 4 Batch 2 (F4.4–F4.6) SELESAI** —
+- **F4.4 dark mode**: `src/stores/ui.store.ts` baru (zustand persist key
+  `questday-ui`, `partialize` → `{theme}`, `theme: 'light'|'dark'|'system'`).
+  Ekspor `resolveTheme` / `applyTheme` (toggle class `dark` di `<html>`).
+  `onRehydrateStorage` panggil `applyTheme` saat import; listener `matchMedia`
+  module-level ikut perubahan OS saat mode `system`.
+  `src/components/layout/ThemeToggle.tsx` baru — `DropdownMenu` (trigger icon
+  button `aria-label="Ubah tema"`, ikon `Sun`/`Moon`/`Monitor` per `theme`), 3
+  item Terang/Gelap/Sistem, aktif ditandai `font-medium` + `Check`. Dipasang di
+  `Topbar` dalam `div.flex.items-center.gap-2` kiri dari avatar dropdown.
+  `main.tsx` `import '@/stores/ui.store'` (side-effect). Anti-flash: IIFE inline
+  di `<head>` `index.html` (sebelum font `<link>`) baca `localStorage`
+  `questday-ui` → set class `dark` sebelum render pertama. Konfirmasi bertahan
+  di `dist/index.html` (`grep -c questday-ui` = 1).
+- **F4.5 toast seragam**: `src/lib/toast.ts` baru — `toastSuccess(msg)` +
+  `toastApiError(err, fallback)` (baca `ApiError.message`; `status === 0` →
+  "Tidak dapat terhubung ke server"; non-ApiError → fallback; tak mengarang
+  detail). Sukses di-wire: `QuestFormDialog` create → "Quest dibuat", edit →
+  "Quest diperbarui" (di `onSuccess`, sebelum tutup dialog); `QuestsPage`
+  archive → "Quest diarsipkan"; `ProfileForm` → "Profil disimpan".
+  Error toast HANYA di `QuestsPage` archive (`onError` → `toastApiError`) karena
+  tak ada UI inline di sana. `QuestFormDialog` + `ProfileForm` TETAP pakai alert
+  inline saja untuk error (dialog/form terlihat; hindari pesan ganda) — tak
+  ditambah error toast. Toggle complete/uncomplete TIDAK dapat toast (F2.6;
+  sudah kasat mata; `already_completed` senyap). `TodayQuestList` `toast.error`
+  lama dibiarkan (refactor opsional dilewati). Hook tetap bebas toast.
+- **F4.6 ErrorBoundary + 404**: `src/components/ErrorBoundary.tsx` baru (class
+  component — diizinkan meski `erasableSyntaxOnly`; field `state` eksplisit,
+  bukan param-property), `getDerivedStateFromError` + `componentDidCatch`
+  (`console.error` hanya DEV), fallback "Ada yang salah" + tombol Muat ulang,
+  `<pre>` detail hanya DEV. `src/pages/NotFoundPage.tsx` baru (default export,
+  "404 — Halaman tak ditemukan" + `Link` ke `PATHS.dashboard`, di luar
+  AppShell → centering minimal). `src/routes/RouteError.tsx` baru
+  (`useRouteError()` → pesan + link dashboard, detail hanya DEV).
+  `routes/index.tsx`: `errorElement: <RouteError />` di KEDUA grup route +
+  route catch-all `{ path: '*', element: <NotFoundPage /> }` top-level.
+  `main.tsx`: `<RouterProvider>` dibungkus `<ErrorBoundary>` di dalam
+  `QueryClientProvider`, `<StrictMode>` tetap terluar.
+- Gate hijau: typecheck / lint (0 error; 3 warning lama di `ui/`) / test (30,
+  tak nambah) / build / format:check. `grep @/features/` di `src/` kosong.
+  Format via `npm run format` (prettier ubah gaya IIFE `index.html` ke
+  semicolon-prefix — normal).
+
+**Phase 4 Batch 3 (F4.7–F4.8) SELESAI** —
+- **F4.7 responsive**: `src/components/layout/SidebarNav.tsx` baru — array `NAV`
+  + `<nav>` + `<NavLink>` (styling aktif `cn(...)` tetap), prop
+  `{ onNavigate?: () => void }` dipanggil `onClick` tiap link (drawer mobile
+  menutup sheet). Brand "QuestDay" TIDAK di `SidebarNav` — tiap kontainer
+  menggambarnya sendiri. `Sidebar.tsx` jadi desktop-only:
+  `aside` `hidden md:flex` (dulu `flex`), merender `<SidebarNav />`. `Topbar.tsx`
+  dapat hamburger `Button variant=ghost size=icon` `aria-label="Buka menu"`
+  `className="md:hidden"` di kiri jauh, membuka `Sheet side=left w-64 p-0`
+  (`SheetHeader h-14` + `SheetTitle` QuestDay, lalu `<SidebarNav onNavigate={()
+  => setOpen(false)} />`); `const [open,setOpen]=useState(false)`. Grup kiri
+  Topbar `div.flex.min-w-0.items-center.gap-2`, `<h1>` kini `truncate`.
+  `AppShell` `<main>` → `p-4 md:p-6`. `QuestTable` wrapper dapat `w-full`
+  (sudah `overflow-x-auto rounded-lg border`); `LeaderboardTable` dibungkus
+  `<div className="w-full overflow-x-auto">` baru.
+- **F4.8 a11y**: `TimezoneSelect` sudah forward `id` ke trigger + terima
+  `aria-label` (tak berubah). `RegisterForm` field timezone kini
+  `FormLabel htmlFor="register-timezone"` + `TimezoneSelect id="register-timezone"
+  aria-label="Timezone"`; `ProfileForm` `TimezoneSelect` dapat `aria-label="Timezone"`
+  (id/htmlFor sudah ada). Avatar `DropdownMenuTrigger` di `Topbar` dapat
+  `aria-label="Menu akun"` (ring focus-visible sudah ada). Audit `outline-none`:
+  semua hit di `src/components/ui/*` (shadcn) berpasangan `focus-visible:ring-*`
+  atau kontainer non-interaktif; satu hit non-ui di `Topbar` avatar trigger
+  berpasangan `focus-visible:ring-2 focus-visible:ring-ring`. Audit `onClick=`:
+  semua di elemen button-like (`Button` / `DropdownMenuItem` / `AlertDialogAction`)
+  — tak ada `div onClick`. Tak ada `onCloseAutoFocus` preventDefault di mana pun.
+- Gate: typecheck bersih; lint 0 error (3 warning lama `ui/`); build sukses
+  (`dist/` dihapus); format:check bersih; `grep @/features/` di `src/` kosong.
+  Test: **29/30 hijau**; 1 gagal (`QuestFormDialog.test.tsx` "submit valid …")
+  HANYA saat run penuh karena timeout worker 5000ms di mesin yang sangat
+  terbebani (environment 164s) — lulus 2/2 saat file itu dijalankan sendiri
+  (environment 8s). Bukan regresi: Batch 3 tak menyentuh `QuestFormDialog`.
+  Tak ada file test yang diubah (tak ada test layout yang meng-assert
+  visibilitas sidebar).
+
+**Phase 4 Batch 4 (F4.10 + route code-splitting + test Phase 4 + docs) SELESAI** —
+- **Route code-splitting**: 6 halaman di `routes/index.tsx` kini
+  `const XPage = lazy(() => import('@/pages/XPage'))` (`NotFoundPage` tetap eager
+  — catch-all top-level tanpa induk `Suspense`, ukurannya sepele). Satu
+  `<Suspense fallback={<PageSkeleton/>}>` membungkus `<Outlet/>` di
+  **`GuestRoute`** dan di **`ProtectedRoute` DI DALAM `AppShell`** (chrome
+  sidebar/topbar tetap tampil saat chunk halaman diunduh) — bukan per-route.
+  `src/components/PageSkeleton.tsx` baru (3 `Skeleton` + `p-6`, `aria-busy`).
+  `routes/index.tsx` dapat `/* oxlint-disable react/only-export-components */`
+  (file router, bukan file komponen). Bundle: **single chunk ~693 KB → entry
+  365 KB** + ~15 chunk halaman/vendor terpisah (LoginPage 2.2 KB, DashboardPage
+  14 KB, QuestsPage 9 KB, dst).
+- **F4.10 build produksi**: `npm run build` bersih; `npm run preview -- --port
+  4173` + `curl /quests` → **HTTP 200**, HTML shell berisi `id="root"` (deep
+  link OK; router `*` catch-all + preview SPA fallback). `dist/index.html` tetap
+  membawa anti-flash `questday-ui` (`grep -c` = 1). `dist/` dihapus setelah cek.
+- **Test Phase 4** (4 file baru, semua hijau):
+  `stores/ui.store.test.ts` (`setTheme` toggle class `dark` di `<html>`;
+  `resolveTheme('system')` → `'light'` via matchMedia polyfill),
+  `components/ErrorBoundary.test.tsx` (`<Boom/>` throw → fallback "Ada yang
+  salah" + "Muat ulang", anak disembunyikan; `console.error` di-spy),
+  `features/auth/components/ProfileForm.test.tsx` (QueryClientProvider + set
+  `useAuthStore` user; Simpan disabled saat pristine → enabled setelah ketik →
+  `mutate` dipanggil 1× dengan `{display_name, timezone}`; `vi.mock`
+  `../queries/profile.queries`),
+  `components/TimezoneSelect.test.tsx` (trigger tampil value; buka → ketik
+  "Tokyo" di `CommandInput` → klik opsi `Asia/Tokyo` → `onChange('Asia/Tokyo')`;
+  polyfill `scrollIntoView` + `ResizeObserver` untuk cmdk).
+- **Total test: 39 (15 file), semua hijau** (dari 30/11).
+- **README** `apps/frontend/README.md` dapat section "## Build produksi"
+  (VITE_* inline saat build, code-splitting, deep link + SPA fallback rewrite).
+- Gate hijau: typecheck / lint (0 error; 3 warning lama `ui/`) / test (39) /
+  build / format:check. `grep -rn "@/features/" src/` kosong.
+
+**Phase 4 SELESAI — MVP FRONTEND DONE.**
+
+**F4.9 (uji melawan backend asli) — SELESAI 2026-09-01.** Smoke curl penuh lawan
+backend Go asli (Postgres :5433, `go build ./cmd/api`, migrasi v1): register →
+login → `GET /me` → `POST /quests` → `GET /quests/today` → complete (+ 409
+`already_completed` pada complete kedua) → `GET /me/score` → `GET /me/streak` →
+`GET /leaderboard` → `PATCH /me` (token BARU terbit) → login salah (401
+`invalid_credential`) → PATCH quest asing (404 `quest_not_found`) → no-auth (401).
+Semua **cocok** dengan MSW mock & kontrak, **kecuali satu**:
+
+- **Mismatch:** middleware auth backend memakai `error.code: "unauthorized"`
+  untuk semua 401 (token hilang/invalid/kedaluwarsa). Kontrak tak mendaftarkannya
+  dan MSW `GET /me` no-token dulu memakai `invalid_credential`.
+  **Perbaikan (bukan tambal FE):** (1) `contracts/openapi.yaml` `ErrorResponse`
+  deskripsi kini mendaftarkan `unauthorized` + catatan bedanya dgn
+  `invalid_credential`; (2) MSW `GET /me` no-token → `errorResponse(401,
+  'unauthorized', ...)`. `npm run gen:api` dijalankan (nol perubahan tipe —
+  `error.code` cuma string bebas). **Nol dampak fungsional**: `client.ts`
+  menangani 401 by-status (`endSession()`), tak pernah cocokkan `error.code`
+  untuk auth.
+
+Backend dimatikan setelah smoke (server tak ditinggalkan jalan); container
+Postgres dibiarkan (dikelola user).
 
 ---
 
@@ -101,7 +262,7 @@ rasio tampilan `xp / (xp + points_to_next_level)`.
 | 1 — Auth & shell | `docs/tasks/phase-01-auth.md` | ✅ **selesai** (F1.1–F1.11) |
 | 2 — Quest | `docs/tasks/phase-02-quest.md` | ✅ **selesai** (F2.1–F2.12) |
 | 3 — Scoring | `docs/tasks/phase-03-scoring.md` | ✅ **selesai** (F3.1–F3.9) |
-| 4 — Settings & polish | `docs/tasks/phase-04-polish.md` | ⬜ belum mulai — mulai dari **F4.1** |
+| 4 — Settings & polish | `docs/tasks/phase-04-polish.md` | ✅ **selesai** (F4.1–F4.10) — **MVP FRONTEND DONE** |
 
 Papan progres per-task ada di `docs/tasks/README.md`.
 
@@ -180,16 +341,19 @@ src/
 ├── lib/
 │   ├── query-client.ts  # QueryClient: staleTime 30s, no-retry 4xx, refetchOnWindowFocus
 │   ├── session.ts        # endSession() — SATU jalur teardown (logout + queryClient.clear() + redirect); wiring setTokenGetter/setUnauthorizedHandler (F1.9)
+│   ├── toast.ts          # toastSuccess / toastApiError — pemetaan mutation → sonner seragam (F4.5)
+│   ├── timezones.ts      # COMMON_TIMEZONES + browserTimezone() — lintas-fitur (dipindah dari features/auth/lib, F4.2)
 │   └── utils.ts          # cn() dari shadcn
 ├── routes/
 │   ├── paths.ts         # PATHS — konstanta, jangan tulis path string literal di komponen
-│   ├── index.tsx         # createBrowserRouter — GuestRoute (login/register) + ProtectedRoute (nested) → 6 route
-│   ├── ProtectedRoute.tsx / ProtectedRoute.test.tsx  # tanpa token → /login (state.from); ada token → <AppShell><Outlet/>
-│   ├── GuestRoute.tsx    # sudah login → lempar ke dashboard
+│   ├── index.tsx         # createBrowserRouter — 6 route LAZY (React.lazy + import()); NotFoundPage eager; catch-all '*'
+│   ├── ProtectedRoute.tsx / ProtectedRoute.test.tsx  # tanpa token → /login (state.from); ada token → <AppShell><Suspense><Outlet/>
+│   ├── GuestRoute.tsx    # sudah login → dashboard; else <Suspense fallback={<PageSkeleton/>}><Outlet/>
+│   ├── RouteError.tsx    # errorElement kedua grup route — "Ada yang salah" + link dashboard, detail hanya DEV (F4.6)
 │   └── router.test.tsx
-├── pages/                # 6 halaman tipis; Login/Register + Dashboard/Quests/Leaderboard nyata
-│                         #   DashboardPage kini juga menampilkan ScoreCard + StreakCard (F3.5);
-│                         #   LeaderboardPage nyata (F3.7); Settings masih placeholder
+├── pages/                # 7 halaman tipis (semua default export); Login/Register + Dashboard/Quests/Leaderboard/Settings nyata
+│                         #   DashboardPage: ScoreCard + StreakCard (F3.5); LeaderboardPage nyata (F3.7);
+│                         #   SettingsPage: Card "Profil" + ProfileForm (F4.2); NotFoundPage: route '*' 404 (F4.6)
 ├── apis/
 │   ├── quest.api.ts      # list/today/create/update/archive/complete/uncomplete — murni HTTP (F2.1)
 │   └── scoring.api.ts    # score / streak / leaderboard — murni HTTP (F3.1)
@@ -197,15 +361,17 @@ src/
 │   ├── handlers.ts      # /healthz + auth + QUEST stateful (7 handler, store in-memory, jalur 404/409) MSW; helper errorBody/errorResponse + dataResponse ({data} envelope, ADR-025)
 │   └── browser.ts        # setupWorker(...handlers)
 ├── components/
-│   ├── ui/               # 18+ komponen shadcn (generated) — termasuk progress + alert-dialog (F2)
+│   ├── ui/               # 20+ komponen shadcn (generated) — + command / popover / sheet / textarea / input-group (F4.2)
 │   ├── EmptyState.tsx    # ikon + judul + deskripsi + aksi — dipakai dashboard/quests kosong (F2.10)
-│   └── layout/           # AppShell (+ <Toaster/> sonner) + Sidebar + Topbar — shell SaaS semua route terproteksi (F1.8)
+│   ├── ErrorBoundary.tsx (+ test)  # class component — bungkus RouterProvider; fallback "Ada yang salah" + Muat ulang (F4.6)
+│   ├── PageSkeleton.tsx  # fallback <Suspense> untuk halaman lazy (route code-splitting, Batch 4)
+│   ├── TimezoneSelect.tsx (+ test)  # combobox IANA (Popover+Command); Intl.supportedValuesOf, fallback COMMON_TIMEZONES (F4.2)
+│   └── layout/           # AppShell (+ <Toaster/>) + Sidebar (desktop-only) + Topbar (hamburger+Sheet) + SidebarNav + ThemeToggle (F4.4/F4.7)
 ├── features/
 │   ├── auth/
-│   │   ├── components/   # LoginForm (+ test), RegisterForm
-│   │   ├── queries/      # authKeys, useMe, useLogin, useRegister (satu-satunya pemanggil authApi)
-│   │   ├── schemas/      # loginSchema / registerSchema (zod, cocok validasi backend)
-│   │   └── lib/          # timezones.ts (daftar IANA + default browser)
+│   │   ├── components/   # LoginForm (+ test), RegisterForm, ProfileForm (+ test) (F4.2)
+│   │   ├── queries/      # authKeys, useMe, useLogin, useRegister, useUpdateProfile (profile.queries.ts, F4.1/F4.3)
+│   │   └── schemas/      # loginSchema / registerSchema / profileSchema (zod, cocok validasi backend)
 │   ├── quest/
 │   │   ├── components/   # QuestItem (+ test), TodayQuestList, QuestFormDialog (+ test), QuestTable
 │   │   ├── queries/      # questKeys (keys.ts) + 7 hook (+ test); complete/uncomplete optimistik di questKeys.today(); isBenignQuestToggleError
@@ -216,9 +382,11 @@ src/
 │       └── queries/      # scoringKeys (keys.ts) + useScore / useStreak / useLeaderboard
 ├── stores/
 │   ├── auth.store.ts     # zustand + persist key 'questday-auth' — token & user (client state saja)
-│   └── auth.store.test.ts
-├── test/setup.ts         # @testing-library/jest-dom/vitest
-├── main.tsx              # enableMocking() → import '@/lib/session' → QueryClientProvider → RouterProvider → Devtools(DEV)
+│   ├── auth.store.test.ts
+│   ├── ui.store.ts       # zustand + persist key 'questday-ui' — theme light/dark/system; resolveTheme/applyTheme (F4.4)
+│   └── ui.store.test.ts  # (Batch 4)
+├── test/setup.ts         # @testing-library/jest-dom/vitest + polyfill window.matchMedia
+├── main.tsx              # enableMocking() → import '@/lib/session' + '@/stores/ui.store' → QueryClientProvider → <ErrorBoundary><RouterProvider> → Devtools(DEV)
 ├── index.css             # Tailwind v4 + token tema shadcn (:root + .dark) + Inter
 └── vite-env.d.ts         # tipe VITE_API_BASE_URL, VITE_USE_MOCK, VITE_PORT?
 ```
@@ -269,6 +437,42 @@ src/
   `quest.queries.test.tsx` (`msw/node` `setupServer` + `queryClient` singleton).
   Setup test menambah polyfill `window.matchMedia` (jsdom) untuk komponen yang
   menyentuh shell / sonner.
+
+### Phase 4 — SELESAI (F4.1–F4.10) → MVP FRONTEND DONE
+
+- **Dark mode** (F4.4): `stores/ui.store.ts` (zustand persist `questday-ui`,
+  `theme: light|dark|system`), `resolveTheme` / `applyTheme` toggle class `dark`
+  di `<html>`; listener `matchMedia` module-level untuk mode `system`. Toggle
+  `components/layout/ThemeToggle.tsx` (DropdownMenu) di Topbar. **Anti-flash**:
+  IIFE inline di `<head>` `index.html` baca `localStorage` `questday-ui` sebelum
+  render pertama (bertahan di `dist/index.html`).
+- **Toast seragam** (F4.5): `lib/toast.ts` — `toastSuccess(msg)` +
+  `toastApiError(err, fallback)` (`ApiError.message`; `status===0` → pesan
+  jaringan). Sukses di-wire pada aksi yang efeknya tak kasat mata (create/edit/
+  archive quest, simpan profil). Toggle complete/uncomplete TANPA toast (F2.6).
+- **ErrorBoundary + 404 + RouteError** (F4.6): `components/ErrorBoundary.tsx`
+  (class) membungkus `<RouterProvider>` di `main.tsx`; `pages/NotFoundPage.tsx`
+  route `*`; `routes/RouteError.tsx` `errorElement` kedua grup. Detail error
+  hanya `import.meta.env.DEV`.
+- **Responsive** (F4.7): `Sidebar` `hidden md:flex` (desktop-only), `Topbar`
+  hamburger → `Sheet` drawer (`SidebarNav` dipakai bersama). Tabel dibungkus
+  `overflow-x-auto`. Tak ada scroll horizontal di 375px.
+- **A11y ringan** (F4.8): tiap input `<Label htmlFor>`, tombol ikon `aria-label`,
+  focus ring tak dihapus (semua `outline-none` berpasangan `focus-visible:ring`).
+- **Settings + PATCH /me** (F4.1–F4.3): `authApi.updateMe → api.patch<AuthResponse>`,
+  `useUpdateProfile()` `onSuccess({token,user})` → `setSession` (token BARU,
+  ADR-022/013) + invalidate `authKeys.me()` / `questKeys.today()` /
+  `scoringKeys.all()`. `ProfileForm` (RHF + `profileSchema`), `SettingsPage` Card
+  "Profil" (email read-only). Mock `PATCH /me` di `handlers.ts`.
+- **Route code-splitting** (Batch 4): 6 halaman `React.lazy` +
+  `<Suspense fallback={<PageSkeleton/>}>` sekali di `GuestRoute` dan di
+  `ProtectedRoute` (di dalam `AppShell`). Bundle: entry ~693 KB → 365 KB + ~15
+  chunk terpisah.
+- **F4.9 = SELESAI** (smoke curl lawan backend Go asli, 2026-09-01). Semua alur
+  MVP cocok mock/kontrak kecuali `error.code: "unauthorized"` (401 middleware) —
+  diperbaiki di `contracts/openapi.yaml` (deskripsi `ErrorResponse`) + MSW
+  `GET /me`. Nol dampak fungsional (`client.ts` handle 401 by-status). Backend
+  dimatikan setelah smoke. **MVP FRONTEND DONE.**
 
 Config root `apps/frontend/`: `.env.example`, `.gitignore`, `.npmrc`,
 `.oxlintrc.json`, `.prettierrc`, `.prettierignore`, `components.json`,

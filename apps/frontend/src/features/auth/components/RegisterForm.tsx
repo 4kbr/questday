@@ -14,15 +14,9 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { TimezoneSelect } from '@/components/TimezoneSelect'
 import { PATHS } from '@/routes/paths'
-import { browserTimezone, timezoneOptions } from '../lib/timezones'
+import { browserTimezone } from '@/lib/timezones'
 import { useRegister } from '../queries/auth.queries'
 import { registerSchema, type RegisterValues } from '../schemas/auth.schema'
 
@@ -30,7 +24,6 @@ export function RegisterForm() {
   const navigate = useNavigate()
   const register = useRegister()
   const [banner, setBanner] = useState<string | null>(null)
-  const tzOptions = timezoneOptions()
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -117,21 +110,15 @@ export function RegisterForm() {
           name="timezone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Timezone</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Pilih timezone" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {tzOptions.map((tz) => (
-                    <SelectItem key={tz} value={tz}>
-                      {tz}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel htmlFor="register-timezone">Timezone</FormLabel>
+              <FormControl>
+                <TimezoneSelect
+                  id="register-timezone"
+                  aria-label="Timezone"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

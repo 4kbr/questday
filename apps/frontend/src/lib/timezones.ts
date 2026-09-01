@@ -1,6 +1,9 @@
 /**
- * Daftar IANA timezone umum untuk field Register (F1.6). Timezone menentukan
- * batas hari untuk streak (ADR-006) — wajib IANA valid.
+ * Daftar IANA timezone umum (fallback browser lama) + util default browser.
+ * Dipakai `RegisterForm` (F1.6) dan `TimezoneSelect` (F4.2). Ditaruh di `lib/`
+ * (bukan `features/auth/lib/`) karena lintas-fitur — oxlint memblokir alias
+ * fitur. Timezone menentukan batas hari untuk streak (ADR-006) — wajib IANA
+ * valid.
  */
 export const COMMON_TIMEZONES = [
   'Asia/Jakarta',

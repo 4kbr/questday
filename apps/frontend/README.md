@@ -58,6 +58,25 @@ adanya oleh interceptor (tak ada key `data` → passthrough).
 Halaman & komponen tak pernah memanggil `axios`/`fetch` langsung — selalu lewat
 hook di `features/*/queries/` yang memanggil `src/apis/*.api.ts`.
 
+## Build produksi
+
+```bash
+npm run build     # tsc -b && vite build → dist/ (file statis siap deploy)
+npm run preview   # sajikan dist/ lokal untuk verifikasi (default port dari vite.config)
+```
+
+- **`VITE_*` di-_inline_ saat build**, bukan dibaca saat runtime. `VITE_API_BASE_URL`
+  (dan `VITE_USE_MOCK`, `VITE_PORT`) ditentukan **sebelum `npm run build`** —
+  nilainya ikut ter-_bake_ ke dalam bundle/image. Mengganti env di
+  container/server **tidak** berpengaruh; kalau target API berbeda, build ulang.
+- **Route code-splitting**: tiap halaman jadi chunk terpisah (`React.lazy` +
+  `Suspense`), jadi bundle awal kecil dan halaman dimuat sesuai kebutuhan.
+- **Deep link** (mis. reload di `/quests`) bekerja karena router punya route
+  `*` (catch-all). Untuk static hosting sungguhan, server tetap butuh **SPA
+  fallback rewrite** (mis. nginx `try_files $uri /index.html;`) supaya semua
+  path mengembalikan `index.html`. `npm run preview` sudah melakukan fallback ini
+  sendiri.
+
 ## Script
 
 | Script                 | Fungsi                                         |

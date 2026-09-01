@@ -5,9 +5,13 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { RouterProvider } from 'react-router-dom'
 import { queryClient } from '@/lib/query-client'
 import { router } from '@/routes'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 // Import eksplisit: side-effect modul `session` men-wire tokenGetter & 401
 // handler (endSession) ke `apis/client` sekali saat bootstrap (F1.2 / F1.9).
 import '@/lib/session'
+// Side-effect: inisialisasi store tema — rehydrate persist (applyTheme) +
+// pasang listener `matchMedia` untuk mode 'system' (F4.4).
+import '@/stores/ui.store'
 import './index.css'
 
 // MSW hanya jalan di balik flag — TAK PERNAH aktif di production build.
@@ -21,7 +25,9 @@ enableMocking().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
         {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
       </QueryClientProvider>
     </StrictMode>,
