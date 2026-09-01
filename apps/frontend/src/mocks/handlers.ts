@@ -4,8 +4,11 @@ import type {
   AuthResponse,
   CreateQuestRequest,
   HealthResponse,
+  LeaderboardEntry,
   Quest,
   QuestLog,
+  Score,
+  Streak,
   TodayQuests,
   UpdateQuestRequest,
   User,
@@ -141,6 +144,56 @@ function buildLog(q: Quest): QuestLog {
 function findActiveQuest(id: string): Quest | undefined {
   return quests.find((q) => q.id === id && q.active)
 }
+
+// --- Fake in-memory store scoring (F3.8) ----------------------------------
+//
+// Mock scoring WAJIB terhubung dengan state quest (`todayCompleted`). Kalau
+// statis, F3.6 (invalidasi lintas-fitur) terlihat "berhasil" tanpa membuktikan
+// apa pun. Complete quest di mock → poin & streak & leaderboard ikut naik.
+
+/** Streak terpanjang yang pernah terlihat sesi ini. */
+let longestStreakSeen = 0
+
+/** Jumlah poin dari semua quest aktif yang selesai hari ini. */
+function sumCompletedPoints(): number {
+  return quests
+    .filter((q) => q.active && todayCompleted.has(q.id))
+    .reduce((sum, q) => sum + POINTS_BY_DIFFICULTY[q.difficulty], 0)
+}
+
+function computeScore(): Score {
+  const xp = sumCompletedPoints()
+  // MOCK-ONLY level formula — fake backend. FRONTEND MUST NOT replicate this.
+  const level = Math.floor(xp / 100) + 1
+  const points_to_next_level = 100 - (xp % 100)
+  return { total_points: xp, xp, level, points_to_next_level }
+}
+
+function computeStreak(): Streak {
+  const current = todayCompleted.size > 0 ? 1 : 0
+  longestStreakSeen = Math.max(longestStreakSeen, current)
+  return {
+    current,
+    longest: longestStreakSeen,
+    last_active: current > 0 ? todayISO() : null,
+  }
+}
+
+/** 2 user palsu tetap untuk membuat ranking menarik. Uuid tetap. */
+const FAKE_LEADERBOARD: LeaderboardEntry[] = [
+  {
+    rank: 0,
+    user_id: '00000000-0000-4000-8000-0000000000a1',
+    display_name: 'Budi',
+    points: 45,
+  },
+  {
+    rank: 0,
+    user_id: '00000000-0000-4000-8000-0000000000a2',
+    display_name: 'Sari',
+    points: 15,
+  },
+]
 
 export const handlers = [
   http.get(`${BASE}/healthz`, () =>
@@ -289,5 +342,30 @@ export const handlers = [
     }
     todayCompleted.delete(id)
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  // --- Scoring (F3.8) ----------------------------------------------------
+  // Ketiganya membaca `todayCompleted`, jadi complete/uncomplete quest di mock
+  // menggeser score, streak, DAN leaderboard sekaligus (syarat F3.8).
+
+  http.get(`${BASE}/me/score`, () => dataResponse<Score>(computeScore())),
+
+  http.get(`${BASE}/me/streak`, () => dataResponse<Streak>(computeStreak())),
+
+  http.get(`${BASE}/leaderboard`, ({ request }) => {
+    const limitParam = new URL(request.url).searchParams.get('limit')
+    const limit = limitParam ? Number(limitParam) : 20
+    const rows: LeaderboardEntry[] = [
+      {
+        rank: 0,
+        user_id: seededUser.id,
+        display_name: seededUser.display_name,
+        points: computeScore().total_points,
+      },
+      ...FAKE_LEADERBOARD.map((e) => ({ ...e })),
+    ]
+    rows.sort((a, b) => b.points - a.points)
+    const ranked = rows.map((e, i) => ({ ...e, rank: i + 1 })).slice(0, limit)
+    return dataResponse<LeaderboardEntry[]>(ranked)
   }),
 ]

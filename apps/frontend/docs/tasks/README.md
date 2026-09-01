@@ -176,15 +176,15 @@ Status: `[ ]` belum · `[~]` jalan · `[x]` selesai
 
 | | ID | Task |
 |---|---|---|
-| [ ] | F3.1 | `apis/scoring.api.ts` |
-| [ ] | F3.2 | `scoringKeys` + `features/scoring/queries` |
-| [ ] | F3.3 | `ScoreCard` — poin, XP, level, progress bar |
-| [ ] | F3.4 | `StreakCard` — current & longest |
-| [ ] | F3.5 | Pasang kedua kartu di Dashboard |
-| [ ] | F3.6 | **Invalidasi lintas-fitur** setelah complete/uncomplete |
-| [ ] | F3.7 | Halaman Leaderboard |
-| [ ] | F3.8 | MSW handler scoring |
-| [ ] | F3.9 | Test phase 3 |
+| [x] | F3.1 | `apis/scoring.api.ts` |
+| [x] | F3.2 | `scoringKeys` + `features/scoring/queries` |
+| [x] | F3.3 | `ScoreCard` — poin, XP, level, progress bar |
+| [x] | F3.4 | `StreakCard` — current & longest |
+| [x] | F3.5 | Pasang kedua kartu di Dashboard |
+| [x] | F3.6 | **Invalidasi lintas-fitur** setelah complete/uncomplete |
+| [x] | F3.7 | Halaman Leaderboard |
+| [x] | F3.8 | MSW handler scoring |
+| [x] | F3.9 | Test phase 3 |
 
 ### Phase 4 — Settings & polish → [phase-04-polish.md](phase-04-polish.md)
 

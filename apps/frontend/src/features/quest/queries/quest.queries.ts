@@ -7,6 +7,9 @@ import type {
   UpdateQuestRequest,
 } from '@/apis/types'
 import { queryClient } from '@/lib/query-client'
+// Batas fitur: hanya konstanta key yang dibagi dari `features/scoring` —
+// tak boleh mengimpor hook/komponennya. Path relatif (oxlint blok alias fitur).
+import { scoringKeys } from '../../scoring/queries/keys'
 import { questKeys } from './keys'
 
 /**
@@ -100,9 +103,15 @@ export function useCompleteQuest() {
       // menyinkronkan. Komponen pemanggil menyaring code ini via
       // `isBenignQuestToggleError`.
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: questKeys.today() }),
-    // TODO(F3.6): invalidate scoring
+    // Satu aksi (centang quest) menggeser tiga sumber di server: today, score,
+    // streak, leaderboard. Invalidasi semua di `onSettled` (bukan `onSuccess`)
+    // supaya toggle yang gagal pun re-sync dengan server.
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: questKeys.today() })
+      queryClient.invalidateQueries({ queryKey: scoringKeys.score() })
+      queryClient.invalidateQueries({ queryKey: scoringKeys.streak() })
+      queryClient.invalidateQueries({ queryKey: scoringKeys.all() }) // leaderboard ikut
+    },
   })
 }
 
@@ -118,8 +127,13 @@ export function useUncompleteQuest() {
       // `not_completed` di sini setara dengan `already_completed` di complete —
       // server sudah di keadaan yang diminta. Bukan error nyata.
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: questKeys.today() }),
-    // TODO(F3.6): invalidate scoring
+    // Sama seperti complete: score/streak/leaderboard ikut di-invalidate di sini
+    // supaya poin turun kembali tanpa reload.
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: questKeys.today() })
+      queryClient.invalidateQueries({ queryKey: scoringKeys.score() })
+      queryClient.invalidateQueries({ queryKey: scoringKeys.streak() })
+      queryClient.invalidateQueries({ queryKey: scoringKeys.all() }) // leaderboard ikut
+    },
   })
 }

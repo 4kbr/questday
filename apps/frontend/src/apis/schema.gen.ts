@@ -560,7 +560,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
             500: components["responses"]["Internal"];
         };
     };
@@ -585,7 +584,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
             500: components["responses"]["Internal"];
         };
     };

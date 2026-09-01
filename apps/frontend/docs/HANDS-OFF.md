@@ -9,19 +9,87 @@ Dokumen orientasi cepat khusus **frontend**. Untuk state seluruh proyek lihat
 
 ## TL;DR
 
-**Phase 0 (Setup & fondasi) + Phase 1 (Auth & shell) + Phase 2 (Quest) SELESAI
-& terverifikasi.** Pondasi (Vite + tema + lapisan API + router + MSW + test)
-berdiri, di atasnya sesi auth penuh (register/login/logout, rute terlindungi,
-shell SaaS), dan kini inti aplikasi: dashboard quest hari ini dengan
-centang optimistik + rollback, CRUD definisi quest (create/edit/arsip), serta
-MSW quest handler stateful sehingga alur penuh jalan tanpa backend.
+**Phase 0 (Setup & fondasi) + Phase 1 (Auth & shell) + Phase 2 (Quest) +
+Phase 3 (Scoring) SELESAI & terverifikasi.** Pondasi (Vite + tema + lapisan API +
+router + MSW + test) berdiri, di atasnya sesi auth penuh (register/login/logout,
+rute terlindungi, shell SaaS), inti aplikasi quest (dashboard hari ini dengan
+centang optimistik + rollback, CRUD definisi quest, MSW quest handler stateful),
+dan kini gamifikasi: kartu score/streak di dashboard, halaman leaderboard dengan
+sorotan baris sendiri, dan invalidasi lintas-fitur sehingga centang quest
+langsung menggeser poin + streak tanpa reload.
 
 **Belum di-commit.** Semua file `apps/frontend/*` masih untracked/termodifikasi.
 `docs/tasks/`, `contracts/`, `AGENTS.md`, root `docs/` tak tersentuh (selain
 dokumen ini + `docs/tasks/README.md` untuk papan progres).
 
-**Mulai dari sini:** `apps/frontend/docs/tasks/phase-03-scoring.md`, kerjakan
-**F3.1** dst berurutan.
+**Phase 3 Batch 1 (F3.1–F3.5) SELESAI** — `gen:api` diregenerasi (kontrak
+menghapus response 404 di score/streak), `apis/scoring.api.ts` (HTTP murni),
+`features/scoring/queries/{keys.ts,scoring.queries.ts}` (`useScore` / `useStreak`
+/ `useLeaderboard`), komponen presentational `ScoreCard` + `StreakCard`, dan
+keduanya terpasang di `DashboardPage` (grid 2 kolom, skeleton saat loading,
+fallback inline saat error). Tak ada rumus level/XP di FE — bar ScoreCard cuma
+rasio tampilan `xp / (xp + points_to_next_level)`.
+
+**Phase 3 Batch 2 (F3.6–F3.8) SELESAI** —
+- **F3.6**: `useCompleteQuest` / `useUncompleteQuest` di `quest.queries.ts` kini
+  meng-invalidate `scoringKeys.score()` + `scoringKeys.streak()` +
+  `scoringKeys.all()` (leaderboard) di `onSettled` (bukan `onSuccess` — gagal pun
+  re-sync). Import `scoringKeys` via path relatif `../../scoring/queries/keys`
+  (KONSTANTA key saja — bukan hook/komponen scoring). Komentar `// TODO(F3.6)`
+  dihapus. 5 hook quest lain tetap invalidate `questKeys.all()`.
+- **F3.7**: `pages/LeaderboardPage.tsx` (nyata) + `features/scoring/components/
+  LeaderboardTable.tsx`. Tabel kolom Rank/Nama/Poin; `rank` dari `entry.rank`
+  (BUKAN indeks array); rank 1-3 dapat ikon `Medal` (emas/perak/perunggu); baris
+  user sendiri `bg-muted/50 font-medium` + penanda "(kamu)"; nama kosong →
+  "Pengguna dihapus". Page: `useLeaderboard()` + `useAuthStore((s)=>s.user?.id)`,
+  skeleton loading, error + "Coba lagi" → `refetch()`, empty →
+  "Belum ada yang mengumpulkan poin". Tanpa chrome layout (AppShell dari route).
+- **F3.8**: MSW handler scoring stateful di `mocks/handlers.ts` — `GET /me/score`,
+  `GET /me/streak`, `GET /leaderboard`. Terhubung ke `todayCompleted` + `quests`
+  + `POINTS_BY_DIFFICULTY`: `sumCompletedPoints()`, `computeScore()` (rumus level
+  MOCK-ONLY), `computeStreak()` (+ `longestStreakSeen` module-level). Leaderboard
+  = seeded user (poin = skor live) + 2 user palsu tetap (Budi 45 / Sari 15),
+  sort desc, rank 1-based setelah sort, slice ke `limit` (query param, default
+  20). `/me/score` & `/me/streak` tak lagi 404 di mock. Centang/uncentang quest
+  di mock kini menggeser score + streak + leaderboard sekaligus.
+
+**Phase 3 Batch 3 (F3.9) SELESAI** — 3 file test baru, semua hijau:
+- `features/scoring/components/ScoreCard.test.tsx` — render skor 0, tengah, dan
+  satu kasus di mana `level` / `points_to_next_level` dari props SENGAJA tak cocok
+  dengan rumus lokal naif (`floor(xp/seratus)+1`); test gagal kalau ada yang
+  menyisipkan rumus level di komponen. Bar hanya dicek keberadaannya (role
+  `progressbar`), bukan nilai persisnya.
+- `features/quest/queries/invalidation.test.tsx` — `msw/node` `setupServer`
+  (`GET /quests/today`, `POST /quests/:id/complete`), `vi.spyOn(queryClient,
+  'invalidateQueries')`, `useCompleteQuest().mutate()` → assert dipanggil dengan
+  `questKeys.today()`, `scoringKeys.score()`, `scoringKeys.streak()`. Import lintas
+  -fitur via path relatif (`../../scoring/queries/keys`). Spy di-restore di
+  `afterEach`.
+- `features/scoring/components/LeaderboardTable.test.tsx` — baris user sendiri
+  dapat `bg-muted/50 font-medium` + "(kamu)"; `rank` dibaca dari `entry.rank`
+  (entries dengan `rank` tak urut → baris pertama tetap rank 2); `display_name`
+  kosong → "Pengguna dihapus".
+
+**Total test: 30 (11 file), semua hijau.**
+
+### Phase 3 selesai — catatan lintas-batch
+
+- **Invalidasi lintas-fitur** ada di `quest.queries.ts` `onSettled` milik
+  `useCompleteQuest` / `useUncompleteQuest`: invalidate `scoringKeys.score()` +
+  `scoringKeys.streak()` + `scoringKeys.all()` (leaderboard) + `questKeys.today()`.
+  Komentar `// TODO(F3.6)` sudah dihapus. `scoringKeys` di-import via path relatif
+  `../../scoring/queries/keys` — KONSTANTA key saja, bukan hook/komponen scoring.
+- **MSW handler scoring stateful** di `handlers.ts` (`computeScore` /
+  `computeStreak`), terhubung ke `todayCompleted` — centang quest di mock
+  menggeser score + streak + leaderboard sekaligus.
+- **Rumus level/XP MOCK-ONLY** hidup di `handlers.ts`. Frontend tak pernah
+  menghitung level/XP; `ScoreCard` cuma rasio tampilan
+  `xp / (xp + points_to_next_level)` untuk bar.
+- **Sorotan baris sendiri di leaderboard** via `useAuthStore((s) => s.user?.id)`
+  di `LeaderboardPage`, diteruskan sebagai `currentUserId` ke `LeaderboardTable`.
+
+**Mulai dari sini:** `apps/frontend/docs/tasks/phase-04-polish.md` **F4.1**
+(`updateMe` + `useUpdateProfile` — butuh backend T1.11).
 
 ---
 
@@ -32,8 +100,8 @@ dokumen ini + `docs/tasks/README.md` untuk papan progres).
 | 0 — Setup & fondasi | `docs/tasks/phase-00-setup.md` | ✅ **selesai** (F0.1–F0.12) |
 | 1 — Auth & shell | `docs/tasks/phase-01-auth.md` | ✅ **selesai** (F1.1–F1.11) |
 | 2 — Quest | `docs/tasks/phase-02-quest.md` | ✅ **selesai** (F2.1–F2.12) |
-| 3 — Scoring | `docs/tasks/phase-03-scoring.md` | ⬜ belum mulai |
-| 4 — Settings & polish | `docs/tasks/phase-04-polish.md` | ⬜ belum mulai |
+| 3 — Scoring | `docs/tasks/phase-03-scoring.md` | ✅ **selesai** (F3.1–F3.9) |
+| 4 — Settings & polish | `docs/tasks/phase-04-polish.md` | ⬜ belum mulai — mulai dari **F4.1** |
 
 Papan progres per-task ada di `docs/tasks/README.md`.
 
@@ -119,9 +187,12 @@ src/
 │   ├── ProtectedRoute.tsx / ProtectedRoute.test.tsx  # tanpa token → /login (state.from); ada token → <AppShell><Outlet/>
 │   ├── GuestRoute.tsx    # sudah login → lempar ke dashboard
 │   └── router.test.tsx
-├── pages/                # 6 halaman tipis; Login/Register + Dashboard/Quests nyata (F2.7/F2.9), sisanya placeholder
+├── pages/                # 6 halaman tipis; Login/Register + Dashboard/Quests/Leaderboard nyata
+│                         #   DashboardPage kini juga menampilkan ScoreCard + StreakCard (F3.5);
+│                         #   LeaderboardPage nyata (F3.7); Settings masih placeholder
 ├── apis/
-│   └── quest.api.ts      # list/today/create/update/archive/complete/uncomplete — murni HTTP (F2.1)
+│   ├── quest.api.ts      # list/today/create/update/archive/complete/uncomplete — murni HTTP (F2.1)
+│   └── scoring.api.ts    # score / streak / leaderboard — murni HTTP (F3.1)
 ├── mocks/
 │   ├── handlers.ts      # /healthz + auth + QUEST stateful (7 handler, store in-memory, jalur 404/409) MSW; helper errorBody/errorResponse + dataResponse ({data} envelope, ADR-025)
 │   └── browser.ts        # setupWorker(...handlers)
@@ -140,7 +211,9 @@ src/
 │   │   ├── queries/      # questKeys (keys.ts) + 7 hook (+ test); complete/uncomplete optimistik di questKeys.today(); isBenignQuestToggleError
 │   │   ├── schemas/      # questFormSchema / QuestFormValues (zod)
 │   │   └── lib/          # difficulty.ts (warna + label badge easy/medium/hard)
-│   └── scoring/          # kerangka folder kosong (.gitkeep)
+│   └── scoring/
+│       ├── components/   # ScoreCard (+ test), StreakCard, LeaderboardTable (+ test)
+│       └── queries/      # scoringKeys (keys.ts) + useScore / useStreak / useLeaderboard
 ├── stores/
 │   ├── auth.store.ts     # zustand + persist key 'questday-auth' — token & user (client state saja)
 │   └── auth.store.test.ts
@@ -188,9 +261,8 @@ src/
   menyaring lewat `isBenignQuestToggleError(err)` (baca `ApiError.code`).
 - **`questKeys` (`features/quest/queries/keys.ts`)** satu-satunya sumber query
   key quest — dilarang menulis `['quests', ...]` di file lain.
-- **`// TODO(F3.6): invalidate scoring`** masih terbuka di `quest.queries.ts`
-  (`useCompleteQuest` / `useUncompleteQuest`) — dikerjakan setelah `scoringKeys`
-  ada di Phase 3.
+- ~~`// TODO(F3.6): invalidate scoring`~~ SELESAI di F3.6 (batch 2) —
+  `useCompleteQuest` / `useUncompleteQuest` kini invalidate scoring keys.
 - **Tanggal dashboard** diambil dari `TodayQuestsResponse.date` (backend hitung
   dari timezone user, ADR-006), bukan `new Date()` browser.
 - **Test**: `QuestItem.test.tsx`, `QuestFormDialog.test.tsx` (seam-mock hook),
